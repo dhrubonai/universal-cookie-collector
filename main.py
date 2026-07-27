@@ -40,12 +40,9 @@ SESSION_NAME = "cookie_collector_session"
 # Target bot
 TARGET_BOT = "@lusuferchkbot"
 
-# Cookie types mapping
+# Cookie types mapping - NETFLIX ONLY
 COOKIE_TYPES = {
-    "netflix": {"emoji": "🎬", "name": "Netflix", "button_text": ["nf", "netflix", "🎬"]},
-    "hotstar": {"emoji": "📺", "name": "Jio Hotstar/Disney+", "button_text": ["hotstar", "disney", "hot", "📺"]},
-    "prime": {"emoji": "📦", "name": "Amazon Prime Video", "button_text": ["prime", "amazon", "📦"]},
-    "crunchyroll": {"emoji": "🍜", "name": "Crunchyroll", "button_text": ["crunchyroll", "crunchy", "anime", "🍜"]}
+    "netflix": {"emoji": "🎬", "name": "Netflix", "button_text": ["nf cookie", "nf", "netflix"]}
 }
 
 
@@ -416,37 +413,31 @@ async def click_cookie_button(tg_client, target_bot, cookie_type: str) -> bool:
         
         latest_with_buttons = messages[0]
         
-        # Type-specific button text to look for
-        type_buttons = {
-            "netflix": ["nf cookie", "netflix cookie", "nf", "🎬", "cookie"],
-            "hotstar": ["hotstar", "disney", "hot", "📺", "cookie"],
-            "prime": ["prime", "amazon", "📦", "cookie"],
-            "crunchyroll": ["crunchyroll", "anime", "🍜", "cookie"]
-        }
+        # NETFLIX ONLY - Look specifically for NF Cookie button
+        netflix_button_terms = ["nf cookie", "nf", "netflix cookie", "netflix"]
         
-        search_terms = type_buttons.get(cookie_type.lower(), ["cookie"])
-        
-        # Search for matching button
+        # Search for Netflix/NF button ONLY
         for row in latest_with_buttons.buttons:
             for btn in row:
-                btn_text_lower = btn.text.lower()
+                btn_text_lower = btn.text.lower().strip()
                 print(f"   Found button: '{btn.text}'")
                 
-                # Check if this button matches our cookie type
-                for term in search_terms:
-                    if term in btn_text_lower:
-                        print(f"🖱️ CLICKING: '{btn.text}' ✅")
+                # ONLY click if it's clearly a Netflix/NF button
+                for term in netflix_button_terms:
+                    if term == btn_text_lower or btn_text_lower.startswith(term):
+                        print(f"🖱️ CLICKING NF COOKIE BUTTON: '{btn.text}' ✅")
                         await btn.click()
                         return True
         
-        # If no specific match, click first button (fallback)
-        try:
-            first_btn = latest_with_buttons.buttons[0][0]
-            print(f"🖱️ FALLBACK: Clicking first button '{first_btn.text}'")
-            await first_btn.click()
-            return True
-        except:
-            pass
+        print("⚠️ No 'NF Cookie' button found - trying any 'cookie' button...")
+        
+        # Fallback: Look for ANY button with 'cookie' in it
+        for row in latest_with_buttons.buttons:
+            for btn in row:
+                if "cookie" in btn.text.lower():
+                    print(f"🖱️ FALLBACK: Clicking '{btn.text}' (has 'cookie' in name)")
+                    await btn.click()
+                    return True
         
         print("⚠️ No suitable button found/clicked")
         return False
@@ -1166,25 +1157,13 @@ def generate_dashboard_html() -> str:
             <div class="control-panel">
                 <h2 class="panel-title">⚙ Controls</h2>
                 
-                <!-- Cookie Type Selection -->
+                <!-- Cookie Type Selection - NETFLIX ONLY -->
                 <div class="form-group">
-                    <label class="form-label">Select Cookie Type:</label>
+                    <label class="form-label">Service:</label>
                     <div class="type-selector" id="type-selector">
                         <div class="type-option selected" data-type="netflix" onclick="selectType(this)">
                             <span class="type-emoji">🎬</span>
                             <span class="type-name">Netflix</span>
-                        </div>
-                        <div class="type-option" data-type="hotstar" onclick="selectType(this)">
-                            <span class="type-emoji">📺</span>
-                            <span class="type-name">Hotstar</span>
-                        </div>
-                        <div class="type-option" data-type="prime" onclick="selectType(this)">
-                            <span class="type-emoji">📦</span>
-                            <span class="type-name">Prime</span>
-                        </div>
-                        <div class="type-option" data-type="crunchyroll" onclick="selectType(this)">
-                            <span class="type-emoji">🍜</span>
-                            <span class="type-name">Crunchyroll</span>
                         </div>
                     </div>
                 </div>
