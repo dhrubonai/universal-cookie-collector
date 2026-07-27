@@ -1097,27 +1097,27 @@ def generate_dashboard_html() -> str:
                 
                 <!-- Step 1: Phone Number -->
                 <div id="step-phone" class="auth-step">
-                    <label class="form-label">📞 Phone Number (with country code)</label>
+                    <label class="form-label">Phone Phone Number (with country code)</label>
                     <input type="tel" id="phone-input" placeholder="+8801XXXXXXXXX" value="">
-                    <button class="btn-primary" onclick="sendCode()">📤 Send Code</button>
+                    <button class="btn-primary" onclick="sendCode()">Send Send Code</button>
                 </div>
                 
                 <!-- Step 2: Verification Code -->
                 <div id="step-code" class="auth-step" style="display: none;">
-                    <label class="form-label">🔑 Verification Code</label>
+                    <label class="form-label">Key Verification Code</label>
                     <p id="code-hint" style="color: #888; font-size: 0.85em; margin-bottom: 10px;">Check your Telegram app for the code</p>
                     <input type="text" id="code-input" placeholder="Enter 5-digit code" maxlength="5">
-                    <button class="btn-primary" onclick="verifyCode()">✅ Verify</button>
-                    <button class="btn-secondary" onclick="resendCode()" style="margin-top: 8px;">🔄 Resend Code</button>
+                    <button class="btn-primary" onclick="verifyCode()">[OK] Verify</button>
+                    <button class="btn-secondary" onclick="resendCode()" style="margin-top: 8px;">Re Resend Code</button>
                 </div>
                 
                 <!-- Step 3: Success -->
                 <div id="step-success" class="auth-step" style="display: none;">
                     <div style="text-align: center; padding: 20px;">
-                        <span style="font-size: 4em;">✅</span>
+                        <span style="font-size: 4em;">[OK]</span>
                         <h3 style="margin-top: 15px; color: #4caf50;">Connected Successfully!</h3>
                         <p id="user-name" style="color: #888;"></p>
-                        <button class="btn-primary" onclick="closeLoginModal()" style="margin-top: 20px;">🚀 Start Collecting!</button>
+                        <button class="btn-primary" onclick="closeLoginModal()" style="margin-top: 20px;">>> Start Collecting!</button>
                     </div>
                 </div>
                 
@@ -1162,11 +1162,11 @@ def generate_dashboard_html() -> str:
                 
                 <!-- Start Button -->
                 <button class="btn-primary" id="start-btn" onclick="startCollection()">
-                    🚀 Start Collection
+                    >> Start Collection
                 </button>
                 
                 <button class="btn-secondary" id="stop-btn" onclick="stopCollection()" style="display:none;">
-                    ⏹️ Stop
+                    [||]️ Stop
                 </button>
                 
                 <!-- Progress -->
@@ -1180,13 +1180,13 @@ def generate_dashboard_html() -> str:
                 
                 <!-- Action Buttons -->
                 <button class="btn-secondary" onclick="copyAllCookies()">
-                    📋 Copy All Cookies
+                    [clip] Copy All Cookies
                 </button>
                 <button class="btn-secondary" onclick="exportJSON()">
-                    💾 Export JSON
+                    [save] Export JSON
                 </button>
                 <button class="btn-secondary btn-danger" onclick="clearAll()">
-                    🗑️ Clear All
+                    [del] Clear All
                 </button>
                 
                 <!-- Log -->
@@ -1196,12 +1196,12 @@ def generate_dashboard_html() -> str:
             <!-- Cookies Display -->
             <div class="cookies-panel">
                 <div class="cookies-header">
-                    <h2 class="panel-title">📋 Collected Cookies</h2>
+                    <h2 class="panel-title">[clip] Collected Cookies</h2>
                     <button class="copy-btn" onclick="copyAllCookies()">Copy All</button>
                 </div>
                 <div id="cookies-list">
                     <div class="empty-state">
-                        <div class="empty-icon">🍪</div>
+                        <div class="empty-icon">cookie</div>
                         <p>No cookies yet</p>
                         <p style="font-size: 0.88em; margin-top: 10px;">Choose type, set quantity, then Start!</p>
                     </div>
@@ -1245,12 +1245,12 @@ def generate_dashboard_html() -> str:
                     isAuthenticated = true;
                     updateStatusBadge('authenticated');
                     hideLoginModal();
-                    log('✅ Telegram connected!', 'success');
+                    log('[OK] Telegram connected!', 'success');
                 } else if (data.status === 'needs_auth' || data.status === 'idle') {
                     isAuthenticated = false;
                     showLoginModal();
                     updateStatusBadge('idle');
-                    log('⏳ Telegram login required', 'info');
+                    log('... Telegram login required', 'info');
                 } else if (data.status === 'sent_code') {
                     showCodeStep();
                 }
@@ -1292,7 +1292,7 @@ def generate_dashboard_html() -> str:
             try {
                 const btn = event.target;
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Sending...';
+                btn.innerHTML = '... Sending...';
                 
                 const res = await fetch(`/api/auth/send-code?phone=${encodeURIComponent(phone)}`, {
                     method: 'POST'
@@ -1305,7 +1305,7 @@ def generate_dashboard_html() -> str:
                 } else {
                     showLoginError(data.error || 'Failed to send code');
                     btn.disabled = false;
-                    btn.innerHTML = '📤 Send Code';
+                    btn.innerHTML = 'Send Send Code';
                 }
             } catch (err) {
                 showLoginError('Network error. Try again.');
@@ -1332,7 +1332,7 @@ def generate_dashboard_html() -> str:
             try {
                 const btn = event.target;
                 btn.disabled = true;
-                btn.innerHTML = '⏳ Verifying...';
+                btn.innerHTML = '... Verifying...';
                 
                 const res = await fetch(`/api/auth/verify?code=${encodeURIComponent(code)}`, {
                     method: 'POST'
@@ -1348,11 +1348,11 @@ def generate_dashboard_html() -> str:
                     
                     isAuthenticated = true;
                     updateStatusBadge('authenticated');
-                    log(`✅ Logged in as ${data.user || 'User'}!`, 'success');
+                    log(`[OK] Logged in as ${data.user || 'User'}!`, 'success');
                 } else {
                     showLoginError(data.error || 'Verification failed');
                     btn.disabled = false;
-                    btn.innerHTML = '✅ Verify';
+                    btn.innerHTML = '[OK] Verify';
                 }
             } catch (err) {
                 showLoginError('Network error. Try again.');
@@ -1390,7 +1390,7 @@ def generate_dashboard_html() -> str:
             // Check if authenticated first
             if (!isAuthenticated) {
                 showLoginModal();
-                log('⚠️ Please login with Telegram first!', 'error');
+                log('[!] Please login with Telegram first!', 'error');
                 return;
             }
             
@@ -1408,7 +1408,7 @@ def generate_dashboard_html() -> str:
             const logArea = document.getElementById('log-area');
             
             startBtn.disabled = true;
-            startBtn.innerHTML = '⏳ Starting...';
+            startBtn.innerHTML = '... Starting...';
             stopBtn.style.display = 'block';
             progressContainer.classList.add('active');
             logArea.classList.add('active');
@@ -1466,11 +1466,11 @@ def generate_dashboard_html() -> str:
                     pollInterval = null;
                     
                     if (job.status === 'completed') {
-                        log(`✅ Complete! Collected ${job.collected_count} cookies`, 'success');
+                        log(`[OK] Complete! Collected ${job.collected_count} cookies`, 'success');
                     } else if (job.status === 'error') {
-                        log(`❌ Error: ${job.error || 'Unknown error'}`, 'error');
+                        log(`[X] Error: ${job.error || 'Unknown error'}`, 'error');
                     } else {
-                        log(`⏹️ Stopped at ${job.collected_count} cookies`, 'info');
+                        log(`[||]️ Stopped at ${job.collected_count} cookies`, 'info');
                     }
                     
                     resetUI();
@@ -1498,7 +1498,7 @@ def generate_dashboard_html() -> str:
             const stopBtn = document.getElementById('stop-btn');
             
             startBtn.disabled = false;
-            startBtn.innerHTML = '🚀 Start Collection';
+            startBtn.innerHTML = '>> Start Collection';
             stopBtn.style.display = 'none';
         }
         
@@ -1511,7 +1511,7 @@ def generate_dashboard_html() -> str:
                 'running': { class: 'status-running', text: 'RUNNING' },
                 'completed': { class: 'status-completed', text: 'COMPLETED' },
                 'error': { class: 'status-error', text: 'ERROR' },
-                'authenticated': { class: 'status-completed', text: '✅ CONNECTED' },
+                'authenticated': { class: 'status-completed', text: '[OK] CONNECTED' },
                 'stopped': { class: 'status-idle', text: 'STOPPED' }
             };
             
@@ -1527,7 +1527,7 @@ def generate_dashboard_html() -> str:
             if (!allCookies || allCookies.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-icon">🍪</div>
+                        <div class="empty-icon">cookie</div>
                         <p>No cookies yet</p>
                     </div>
                 `;
@@ -1543,7 +1543,7 @@ def generate_dashboard_html() -> str:
                         <span class="cookie-time">#${i + 1} • ${new Date(cookie.timestamp).toLocaleTimeString()}</span>
                     </div>
                     <div class="cookie-data">${escapeHtml(cookie.data)}</div>
-                    <button class="copy-btn" onclick="copyCookie(${i})">📋 Copy This Cookie</button>
+                    <button class="copy-btn" onclick="copyCookie(${i})">[clip] Copy This Cookie</button>
                 </div>
             `).join('');
         }
@@ -1596,7 +1596,7 @@ def generate_dashboard_html() -> str:
             try {
                 await navigator.clipboard.writeText(allText);
                 log(`Copied ${allCookies.length} cookies to clipboard!`, 'success');
-                alert(`✅ Copied ${allCookies.length} cookies!`);
+                alert(`[OK] Copied ${allCookies.length} cookies!`);
             } catch (err) {
                 console.error('Copy error:', err);
             }
