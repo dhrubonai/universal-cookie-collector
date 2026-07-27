@@ -115,18 +115,21 @@ all_cookies: List[CollectedCookie] = []
 job_counter = 0
 client: Optional[TelegramClient] = None
 is_client_connected = False
+auth_state = {"status": "idle", "phone_hash": None}  # idle, sent_code, authenticated
 
 
 # ============== TELETHON CLIENT MANAGEMENT ==============
 async def get_telegram_client() -> Optional[TelegramClient]:
     """Get or create Telethon client"""
-    global client, is_client_connected
+    global client, is_client_connected, auth_state
     
     if not TELETHON_AVAILABLE:
         return None
         
-    if client and is_client_connected:
-        return client
+    if client and is_client_connected and auth_state["status"] == "authenticated":
+        # Check if actually authorized
+        if await client.is_user_authorized():
+            return client
     
     try:
         # Create session directory if not exists
@@ -139,14 +142,77 @@ async def get_telegram_client() -> Optional[TelegramClient]:
         )
         
         await client.connect()
-        is_client_connected = True
-        print("✅ Telegram client connected!")
-        return client
         
+        # Check if already authorized (session exists)
+        if await client.is_user_authorized():
+            is_client_connected = True
+            auth_state["status"] = "authenticated"
+            print("✅ Telegram client connected and authorized!")
+            return client
+        else:
+            is_client_connected = True  # Connected but not authorized
+            auth_state["status"] = "needs_auth"
+            print("⏳ Telegram connected - needs phone verification")
+            return client
+            
     except Exception as e:
         print(f"❌ Failed to connect Telegram client: {e}")
         is_client_connected = False
         return None
+
+
+async def send_phone_code(phone: str) -> dict:
+    """Send verification code to phone number"""
+    global client, auth_state
+    
+    tg_client = await get_telegram_client()
+    
+    if not tg_client:
+        return {"success": False, "error": "Cannot connect to Telegram"}
+    
+    try:
+        result = await tg_client.send_code_request(phone)
+        auth_state["status"] = "sent_code"
+        auth_state["phone_hash"] = result.phone_code_hash
+        auth_state["phone"] = phone
+        
+        return {
+            "success": True,
+            "message": f"Code sent to {phone}",
+            "phone_code_hash": result.phone_code_hash
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def verify_code(code: str) -> dict:
+    """Verify the code received on phone"""
+    global client, auth_state, is_client_connected
+    
+    if not client or auth_state.get("status") != "sent_code":
+        return {"success": False, "error": "No pending verification. Send phone first."}
+    
+    try:
+        await client.sign_in(phone=auth_state.get("phone"), code=code, phone_code_hash=auth_state.get("phone_hash"))
+        auth_state["status"] = "authenticated"
+        is_client_connected = True
+        
+        # Save session
+        await client.session.save()
+        
+        return {
+            "success": True,
+            "message": "✅ Successfully authenticated!",
+            "user": (await client.get_me()).first_name
+        }
+    except Exception as e:
+        error_msg = str(e)
+        if "PHONE_CODE_INVALID" in error_msg:
+            return {"success": False, "error": "Invalid code. Try again."}
+        elif "PHONE_CODE_EXPIRED" in error_msg:
+            return {"success": False, "error": "Code expired. Send new code."}
+        else:
+            return {"success": False, "error": error_msg}
 
 
 async def disconnect_client():
@@ -374,11 +440,13 @@ def save_cookie_to_file(cookie: CollectedCookie):
 @app.get("/")
 async def root():
     """Root endpoint - returns info"""
+    global auth_state
     return {
         "service": "🎬 Netflix Cookie Collector",
         "version": "2.0.0",
         "status": "running",
         "telegram_connected": is_client_connected,
+        "auth_status": auth_state.get("status", "idle"),
         "endpoints": {
             "dashboard": "/dashboard (HTML page)",
             "start_collection": "POST /api/collect",
@@ -386,8 +454,37 @@ async def root():
             "all_jobs": "GET /api/jobs",
             "all_cookies": "GET /api/cookies",
             "stop_job": "POST /api/job/{job_id}/stop",
-            "cookie_types": "GET /api/types"
+            "cookie_types": "GET /api/types",
+            "auth_send_phone": "POST /api/auth/send-code",
+            "auth_verify": "POST /api/auth/verify",
+            "auth_status": "GET /api/auth/status"
         }
+    }
+
+
+# ============== AUTHENTICATION ENDPOINTS ==============
+@app.post("/api/auth/send-code")
+async def send_code_endpoint(phone: str = Query(..., description="Phone number with country code (+880...)")):
+    """Send verification code to phone"""
+    result = await send_phone_code(phone)
+    return result
+
+
+@app.post("/api/auth/verify")
+async def verify_code_endpoint(code: str = Query(..., description="Verification code from Telegram")):
+    """Verify the received code"""
+    result = await verify_code(code)
+    return result
+
+
+@app.get("/api/auth/status")
+async def auth_status():
+    """Get current authentication status"""
+    global auth_state
+    return {
+        "status": auth_state.get("status", "idle"),
+        "telegram_connected": is_client_connected,
+        "telethon_available": TELETHON_AVAILABLE
     }
 
 
@@ -875,6 +972,78 @@ def generate_dashboard_html() -> str:
         .log-success { color: #81c784; }
         .log-error { color: #e57373; }
         
+        /* Login Modal */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .login-box {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 420px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .login-icon {
+            font-size: 3.5em;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .login-header h2 {
+            font-size: 1.4em;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .login-header p {
+            color: #888;
+            font-size: 0.9em;
+        }
+        .auth-step {
+            margin-bottom: 20px;
+        }
+        .auth-step input[type="tel"],
+        .auth-step input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0,0,0,0.4);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .auth-step input:focus {
+            outline: none;
+            border-color: #e50914;
+        }
+        .error-msg {
+            background: rgba(244,67,54,0.15);
+            border: 1px solid #f44336;
+            color: #f44336;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 0.9em;
+            margin-top: 15px;
+        }
+        
         footer {
             text-align: center;
             padding: 25px;
@@ -914,6 +1083,45 @@ def generate_dashboard_html() -> str:
             <div class="stat-card">
                 <div class="stat-number" id="cr-count">0</div>
                 <div class="stat-label">🍜 Crunchyroll</div>
+            </div>
+        </div>
+        
+        <!-- Login Modal (shows when not authenticated) -->
+        <div id="login-modal" class="login-overlay" style="display: none;">
+            <div class="login-box">
+                <div class="login-header">
+                    <span class="login-icon">📱</span>
+                    <h2>Telegram Login Required</h2>
+                    <p>Connect your Telegram account to start collecting cookies!</p>
+                </div>
+                
+                <!-- Step 1: Phone Number -->
+                <div id="step-phone" class="auth-step">
+                    <label class="form-label">📞 Phone Number (with country code)</label>
+                    <input type="tel" id="phone-input" placeholder="+8801XXXXXXXXX" value="">
+                    <button class="btn-primary" onclick="sendCode()">📤 Send Code</button>
+                </div>
+                
+                <!-- Step 2: Verification Code -->
+                <div id="step-code" class="auth-step" style="display: none;">
+                    <label class="form-label">🔑 Verification Code</label>
+                    <p id="code-hint" style="color: #888; font-size: 0.85em; margin-bottom: 10px;">Check your Telegram app for the code</p>
+                    <input type="text" id="code-input" placeholder="Enter 5-digit code" maxlength="5">
+                    <button class="btn-primary" onclick="verifyCode()">✅ Verify</button>
+                    <button class="btn-secondary" onclick="resendCode()" style="margin-top: 8px;">🔄 Resend Code</button>
+                </div>
+                
+                <!-- Step 3: Success -->
+                <div id="step-success" class="auth-step" style="display: none;">
+                    <div style="text-align: center; padding: 20px;">
+                        <span style="font-size: 4em;">✅</span>
+                        <h3 style="margin-top: 15px; color: #4caf50;">Connected Successfully!</h3>
+                        <p id="user-name" style="color: #888;"></p>
+                        <button class="btn-primary" onclick="closeLoginModal()" style="margin-top: 20px;">🚀 Start Collecting!</button>
+                    </div>
+                </div>
+                
+                <div id="login-error" class="error-msg" style="display: none;"></div>
             </div>
         </div>
         
@@ -1013,6 +1221,7 @@ def generate_dashboard_html() -> str:
         let selectedType = 'netflix';
         let pollInterval = null;
         let allCookies = [];
+        let isAuthenticated = false;
         
         // Type emoji map
         const typeEmojis = {
@@ -1021,6 +1230,170 @@ def generate_dashboard_html() -> str:
             prime: '📦',
             crunchyroll: '🍜'
         };
+        
+        // ============== AUTHENTICATION FUNCTIONS ==============
+        
+        // Check authentication status on load
+        async function checkAuthStatus() {
+            try {
+                const res = await fetch('/api/auth/status');
+                const data = await res.json();
+                
+                console.log('Auth status:', data);
+                
+                if (data.status === 'authenticated') {
+                    isAuthenticated = true;
+                    updateStatusBadge('authenticated');
+                    hideLoginModal();
+                    log('✅ Telegram connected!', 'success');
+                } else if (data.status === 'needs_auth' || data.status === 'idle') {
+                    isAuthenticated = false;
+                    showLoginModal();
+                    updateStatusBadge('idle');
+                    log('⏳ Telegram login required', 'info');
+                } else if (data.status === 'sent_code') {
+                    showCodeStep();
+                }
+            } catch (err) {
+                console.error('Auth check error:', err);
+                showLoginModal();
+            }
+        }
+        
+        // Show login modal
+        function showLoginModal() {
+            document.getElementById('login-modal').style.display = 'flex';
+            document.getElementById('step-phone').style.display = 'block';
+            document.getElementById('step-code').style.display = 'none';
+            document.getElementById('step-success').style.display = 'none';
+            document.getElementById('login-error').style.display = 'none';
+        }
+        
+        // Hide login modal
+        function hideLoginModal() {
+            document.getElementById('login-modal').style.display = 'none';
+        }
+        
+        // Close login modal and start
+        function closeLoginModal() {
+            hideLoginModal();
+            log('Ready to collect cookies! Choose type and click Start.', 'success');
+        }
+        
+        // Send code to phone
+        async function sendCode() {
+            const phone = document.getElementById('phone-input').value.trim();
+            
+            if (!phone || phone.length < 10) {
+                showLoginError('Please enter a valid phone number with country code');
+                return;
+            }
+            
+            try {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Sending...';
+                
+                const res = await fetch(`/api/auth/send-code?phone=${encodeURIComponent(phone)}`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showCodeStep();
+                    log(`Code sent to ${phone}`, 'success');
+                } else {
+                    showLoginError(data.error || 'Failed to send code');
+                    btn.disabled = false;
+                    btn.innerHTML = '📤 Send Code';
+                }
+            } catch (err) {
+                showLoginError('Network error. Try again.');
+                console.error(err);
+            }
+        }
+        
+        // Show code input step
+        function showCodeStep() {
+            document.getElementById('step-phone').style.display = 'none';
+            document.getElementById('step-code').style.display = 'block';
+            document.getElementById('login-error').style.display = 'none';
+        }
+        
+        // Verify the code
+        async function verifyCode() {
+            const code = document.getElementById('code-input').value.trim();
+            
+            if (!code || code.length < 4) {
+                showLoginError('Please enter the verification code');
+                return;
+            }
+            
+            try {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Verifying...';
+                
+                const res = await fetch(`/api/auth/verify?code=${encodeURIComponent(code)}`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    // Show success step
+                    document.getElementById('step-code').style.display = 'none';
+                    document.getElementById('step-success').style.display = 'block';
+                    document.getElementById('user-name').textContent = `Welcome, ${data.user || 'User'}!`;
+                    document.getElementById('login-error').style.display = 'none';
+                    
+                    isAuthenticated = true;
+                    updateStatusBadge('authenticated');
+                    log(`✅ Logged in as ${data.user || 'User'}!`, 'success');
+                } else {
+                    showLoginError(data.error || 'Verification failed');
+                    btn.disabled = false;
+                    btn.innerHTML = '✅ Verify';
+                }
+            } catch (err) {
+                showLoginError('Network error. Try again.');
+                console.error(err);
+            }
+        }
+        
+        // Resend code
+        async function resendCode() {
+            const phone = document.getElementById('phone-input').value;
+            if (phone) {
+                document.getElementById('step-phone').style.display = 'block';
+                document.getElementById('step-code').style.display = 'none';
+                sendCode();
+            }
+        }
+        
+        // Show login error
+        function showLoginError(msg) {
+            const el = document.getElementById('login-error');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+        
+        // Update status badge
+        function updateStatusBadge(status) {
+            const el = document.getElementById('connection-status');
+            const statusMap = {
+                'idle': { class: 'status-idle', text: 'NOT CONNECTED' },
+                'connecting': { class: 'status-running', text: 'CONNECTING...' },
+                'running': { class: 'status-running', text: 'RUNNING' },
+                'completed': { class: 'status-completed', text: 'COMPLETED' },
+                'error': { class: 'status-error', text: 'ERROR' },
+                'authenticated': { class: 'status-completed', text: '✅ CONNECTED' },
+                'stopped': { class: 'status-idle', text: 'STOPPED' }
+            };
+            
+            const s = statusMap[status] || statusMap['idle'];
+            el.className = `status-badge ${s.class}`;
+            el.textContent = s.text;
+        }
         
         // Select cookie type
         function selectType(el) {
@@ -1032,6 +1405,13 @@ def generate_dashboard_html() -> str:
         
         // Start collection
         async function startCollection() {
+            // Check if authenticated first
+            if (!isAuthenticated) {
+                showLoginModal();
+                log('⚠️ Please login with Telegram first!', 'error');
+                return;
+            }
+            
             const count = parseInt(document.getElementById('cookie-count').value);
             
             if (!count || count < 1 || count > 500) {
@@ -1286,8 +1666,8 @@ def generate_dashboard_html() -> str:
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             updateStats();
-            log('System ready! Select type and start collecting.', 'info');
-            updateStatusBadge('idle');
+            // Check authentication status first
+            checkAuthStatus();
         });
     </script>
 </body>
