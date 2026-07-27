@@ -1377,24 +1377,6 @@ def generate_dashboard_html() -> str:
             el.style.display = 'block';
         }
         
-        // Update status badge
-        function updateStatusBadge(status) {
-            const el = document.getElementById('connection-status');
-            const statusMap = {
-                'idle': { class: 'status-idle', text: 'NOT CONNECTED' },
-                'connecting': { class: 'status-running', text: 'CONNECTING...' },
-                'running': { class: 'status-running', text: 'RUNNING' },
-                'completed': { class: 'status-completed', text: 'COMPLETED' },
-                'error': { class: 'status-error', text: 'ERROR' },
-                'authenticated': { class: 'status-completed', text: '✅ CONNECTED' },
-                'stopped': { class: 'status-idle', text: 'STOPPED' }
-            };
-            
-            const s = statusMap[status] || statusMap['idle'];
-            el.className = `status-badge ${s.class}`;
-            el.textContent = s.text;
-        }
-        
         // Select cookie type
         function selectType(el) {
             document.querySelectorAll('.type-option').forEach(opt => opt.classList.remove('selected'));
@@ -1523,8 +1505,19 @@ def generate_dashboard_html() -> str:
         // Update status badge
         function updateStatusBadge(status) {
             const el = document.getElementById('connection-status');
-            el.className = `status-badge status-${status}`;
-            el.textContent = status.toUpperCase();
+            const statusMap = {
+                'idle': { class: 'status-idle', text: 'NOT CONNECTED' },
+                'connecting': { class: 'status-running', text: 'CONNECTING...' },
+                'running': { class: 'status-running', text: 'RUNNING' },
+                'completed': { class: 'status-completed', text: 'COMPLETED' },
+                'error': { class: 'status-error', text: 'ERROR' },
+                'authenticated': { class: 'status-completed', text: '✅ CONNECTED' },
+                'stopped': { class: 'status-idle', text: 'STOPPED' }
+            };
+            
+            const s = statusMap[status] || statusMap['idle'];
+            el.className = `status-badge ${s.class}`;
+            el.textContent = s.text;
         }
         
         // Render cookies list
