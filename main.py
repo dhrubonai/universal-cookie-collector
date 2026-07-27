@@ -245,9 +245,12 @@ def extract_cookie_from_message(message_text: str, cookie_type: str) -> Optional
     # Patterns based on cookie type
     patterns = {
         "netflix": [
-            r'(NetflixId=[^;]+;\s*SecureNetflixId=[^;]+)',
-            r'(NetflixId=\S+)',
-            r'([a-zA-Z0-9]{20,}={0,2})',  # Long base64-like strings
+            # Full Netflix URL with nftoken (THIS IS THE CORRECT FORMAT!)
+            r'(https://www\.netflix\.com/browse\?nftoken=[^\s<>"]+)',
+            # Just the nftoken value (long base64 string with +, /, =)
+            r'(nftoken=([A-Za-z0-9+/=]{100,}))',
+            # Fallback: very long strings that look like tokens
+            r'([A-Za-z0-9+/=]{80,})',
         ],
         "hotstar": [
             r'(st=[^;]+)',
@@ -277,7 +280,11 @@ def extract_cookie_from_message(message_text: str, cookie_type: str) -> Optional
     for pattern in patterns.get(cookie_type, []):
         match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
         if match:
-            return match.group(1).strip()
+            result = match.group(1).strip()
+            # For nftoken pattern, return full "nftoken=value" or just value if captured in group 2
+            if match.lastindex and match.lastindex >= 2:
+                result = match.group(2).strip()  # Return the actual token value
+            return result
     
     # Fallback to generic patterns
     for pattern in generic_patterns:
@@ -411,8 +418,9 @@ async def run_collection_job(job_id: str):
                         except:
                             pass
             
-            # Wait before next iteration
-            await asyncio.sleep(2)
+            # Wait before next iteration (15 seconds for bot to generate cookie!)
+            print("⏳ Waiting 15 seconds for next cookie...")
+            await asyncio.sleep(15)
         
         # Mark as completed
         if job.collected_count >= job.target_count:
