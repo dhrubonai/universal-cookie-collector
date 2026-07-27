@@ -7,7 +7,6 @@ Access from: Any browser (Android/iOS/Desktop)
 """
 
 import asyncio
-import hashlib
 import json
 import os
 import re
@@ -312,9 +311,8 @@ async def run_collection_job(job_id: str):
     job.status = "running"
     job.started_at = datetime.now().isoformat()
     
-    # CRITICAL: Track BOTH message IDs AND cookie contents to avoid duplicates!
-    processed_message_ids = set()
-    collected_cookie_hashes = set()  # Hash of cookie content to detect duplicates
+    # Track cookie endings to detect duplicates (last 6 chars = unique identifier)
+    collected_cookie_endings = set()  # Store last 6 chars of each cookie
     
     tg_client = await get_telegram_client()
     
@@ -360,41 +358,39 @@ async def run_collection_job(job_id: str):
             cookie_data = extract_cookie_from_message(latest_msg.text or "", job.cookie_type)
             
             if cookie_data:
-                # Create hash of cookie content for deduplication
-                cookie_hash = hashlib.sha256(cookie_data.encode()).hexdigest()[:16]
+                # Get last 6 characters as unique identifier (simple & effective!)
+                cookie_ending = cookie_data[-6:] if len(cookie_data) >= 6 else cookie_data
                 
-                # CRITICAL: Check if we've already collected this EXACT cookie before!
-                if cookie_hash in collected_cookie_hashes:
-                    print(f"🔄 DUPLICATE DETECTED! Cookie hash {cookie_hash} already collected")
-                    print(f"   Skipping duplicate, clicking next button...")
+                # Check if we've already collected a cookie with this ending
+                if cookie_ending in collected_cookie_endings:
+                    print(f"🔄 Duplicate! Last 6 chars '{cookie_ending}' already seen")
+                    print(f"   Clicking next to get a different cookie...")
                     consecutive_duplicates += 1
                     
-                    # Try multiple times to get a new cookie
+                    # After 3 duplicates, try harder
                     if consecutive_duplicates >= max_consecutive_duplicates:
-                        print("⚠️ Too many duplicates! Trying aggressive button clicking...")
-                        # Try clicking ALL buttons to force new cookie
+                        print("⚠️ Multiple duplicates! Trying all buttons...")
                         if latest_msg.buttons:
                             for row in latest_msg.buttons:
                                 for btn in row:
                                     try:
-                                        print(f"🖱️ Force clicking: {btn.text}")
+                                        print(f"🖱️ Force click: {btn.text}")
                                         await btn.click()
                                         await asyncio.sleep(2)
                                     except:
                                         pass
                         consecutive_duplicates = 0
                     else:
-                        # Normal next button click
                         if latest_msg.buttons:
                             await click_next_button(latest_msg, button_keywords, True)
                     
-                    print("⏳ Waiting 15 seconds for NEW cookie...")
+                    print("⏳ Waiting 15 seconds...")
                     await asyncio.sleep(15)
                     continue
                 
-                # This is a NEW unique cookie!
-                consecutive_duplicates = 0  # Reset duplicate counter
-                collected_cookie_hashes.add(cookie_hash)
+                # This is a NEW cookie (different last 6 chars)!
+                consecutive_duplicates = 0
+                collected_cookie_endings.add(cookie_ending)
                 
                 # Save the cookie
                 job.collected_count += 1
@@ -408,9 +404,9 @@ async def run_collection_job(job_id: str):
                 job.cookies.append(new_cookie)
                 all_cookies.append(new_cookie)
                 
-                print(f"✅ UNIQUE cookie #{job.collected_count}/{job.target_count} collected!")
-                print(f"   Hash: {cookie_hash}")
-                print(f"   Preview: {cookie_data[:80]}..." )
+                print(f"✅ Cookie #{job.collected_count}/{job.target_count} collected!")
+                print(f"   Ending: ...{cookie_ending} (unique!)")
+                print(f"   Preview: {cookie_data[:60]}...{cookie_ending}" )
                 
                 # Also save to file
                 save_cookie_to_file(new_cookie)
@@ -434,7 +430,7 @@ async def run_collection_job(job_id: str):
             job.status = "completed"  # Stopped by user or other reason
         
         job.completed_at = datetime.now().isoformat()
-        print(f"\n🎉 Job {job_id} completed! Collected {job.collected_count} UNIQUE cookies")
+        print(f"\n🎉 Job {job_id} completed! Collected {job.collected_count} cookies")
         
     except Exception as e:
         print(f"❌ Job failed: {e}")

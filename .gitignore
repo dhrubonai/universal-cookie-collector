@@ -8,6 +8,10 @@ venv/
 env/
 ENV/
 
+# Node/Next.js (large files - don't track!)
+node_modules/
+.next/
+
 # Sessions (contain auth data - don't share!)
 sessions/
 *.session
