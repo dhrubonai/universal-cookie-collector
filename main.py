@@ -492,7 +492,12 @@ async def auth_status():
 async def dashboard():
     """Return the HTML dashboard"""
     html_content = generate_dashboard_html()
-    return HTMLResponse(content=html_content)
+    return HTMLResponse(
+        content=html_content, 
+        status_code=200,
+        media_type="text/html",
+        headers={"Content-Type": "text/html; charset=utf-8"}
+    )
 
 
 @app.get("/api/types")
