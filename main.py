@@ -413,31 +413,27 @@ async def click_cookie_button(tg_client, target_bot, cookie_type: str) -> bool:
         
         latest_with_buttons = messages[0]
         
-        # NETFLIX ONLY - Look specifically for NF Cookie button
-        netflix_button_terms = ["nf cookie", "nf", "netflix cookie", "netflix"]
+        # NETFLIX ONLY - Look SPECIFICALLY for "NF Token" button
+        # This is the EXACT button name - nothing else!
+        nf_token_button = "nf token"
         
-        # Search for Netflix/NF button ONLY
+        # Search for NF Token button ONLY
         for row in latest_with_buttons.buttons:
             for btn in row:
-                btn_text_lower = btn.text.lower().strip()
+                btn_text = btn.text.lower().strip()
                 print(f"   Found button: '{btn.text}'")
                 
-                # ONLY click if it's clearly a Netflix/NF button
-                for term in netflix_button_terms:
-                    if term == btn_text_lower or btn_text_lower.startswith(term):
-                        print(f"🖱️ CLICKING NF COOKIE BUTTON: '{btn.text}' ✅")
-                        await btn.click()
-                        return True
-        
-        print("⚠️ No 'NF Cookie' button found - trying any 'cookie' button...")
-        
-        # Fallback: Look for ANY button with 'cookie' in it
-        for row in latest_with_buttons.buttons:
-            for btn in row:
-                if "cookie" in btn.text.lower():
-                    print(f"🖱️ FALLBACK: Clicking '{btn.text}' (has 'cookie' in name)")
+                # ONLY click if it's exactly "NF Token" (or close match)
+                if btn_text == nf_token_button or btn_text == "nf token" or "nf token" in btn_text:
+                    print(f"🖱️ CLICKING NF TOKEN BUTTON: '{btn.text}' ✅")
                     await btn.click()
                     return True
+        
+        print("⚠️ No 'NF Token' button found!")
+        print("   Available buttons:")
+        for row in latest_with_buttons.buttons:
+            for btn in row:
+                print(f"      - '{btn.text}'")
         
         print("⚠️ No suitable button found/clicked")
         return False
