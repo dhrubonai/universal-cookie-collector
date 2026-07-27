@@ -1129,7 +1129,7 @@ def generate_dashboard_html() -> str:
         <div class="main-grid">
             <!-- Control Panel -->
             <div class="control-panel">
-                <h2 class="panel-title">⚙️ Controls</h2>
+                <h2 class="panel-title">⚙ Controls</h2>
                 
                 <!-- Cookie Type Selection -->
                 <div class="form-group">
@@ -1166,7 +1166,7 @@ def generate_dashboard_html() -> str:
                 </button>
                 
                 <button class="btn-secondary" id="stop-btn" onclick="stopCollection()" style="display:none;">
-                    [||]️ Stop
+                    [||] Stop
                 </button>
                 
                 <!-- Progress -->
@@ -1211,7 +1211,7 @@ def generate_dashboard_html() -> str:
         
         <footer>
             <p>Universal Cookie Collector v2.0 | Educational Purpose Only</p>
-            <p style="margin-top: 6px;">Works on Android • iOS • Desktop</p>
+            <p style="margin-top: 6px;">Works on Android - iOS - Desktop</p>
         </footer>
     </div>
 
@@ -1470,7 +1470,7 @@ def generate_dashboard_html() -> str:
                     } else if (job.status === 'error') {
                         log(`[X] Error: ${job.error || 'Unknown error'}`, 'error');
                     } else {
-                        log(`[||]️ Stopped at ${job.collected_count} cookies`, 'info');
+                        log(`[||] Stopped at ${job.collected_count} cookies`, 'info');
                     }
                     
                     resetUI();
@@ -1540,7 +1540,7 @@ def generate_dashboard_html() -> str:
                         <span class="cookie-badge badge-${cookie.cookie_type}">
                             ${typeEmojis[cookie.cookie_type]} ${cookie.cookie_type.toUpperCase()}
                         </span>
-                        <span class="cookie-time">#${i + 1} • ${new Date(cookie.timestamp).toLocaleTimeString()}</span>
+                        <span class="cookie-time">#${i + 1} - ${new Date(cookie.timestamp).toLocaleTimeString()}</span>
                     </div>
                     <div class="cookie-data">${escapeHtml(cookie.data)}</div>
                     <button class="copy-btn" onclick="copyCookie(${i})">[clip] Copy This Cookie</button>
