@@ -278,6 +278,8 @@ async function pollJobStatus() {
             allCookies = job.cookies;
             renderCookies();
             updateStats();
+            // Save to localStorage so they persist forever!
+            saveToLocalStorage();
         }
         
         if (job.status === 'completed' || job.status === 'error' || job.status === 'stopped') {
@@ -413,33 +415,58 @@ function exportJSON() {
         return;
     }
     
-    const data = {
-        export_time: new Date().toISOString(),
-        total: allCookies.length,
-        cookies: allCookies
-    };
+    // Export ONLY plain cookies, one per line - no extra text!
+    const cookiesOnly = allCookies.map(function(c) { return c.data; });
+    const jsonContent = JSON.stringify(cookiesOnly, null, 2);
     
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([jsonContent], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'cookies-' + Date.now() + '.json';
     a.click();
-    log('Exported to JSON!', 'success');
+    log('Exported ' + allCookies.length + ' cookies (plain format)!', 'success');
 }
 
 async function clearAll() {
-    if (!confirm('Clear ALL cookies?')) return;
+    if (!confirm('Clear ALL cookies? This cannot be undone!')) return;
     
     try {
         await fetch('/api/cookies', { method: 'DELETE' });
         allCookies = [];
+        // Clear localStorage too
+        localStorage.removeItem('saved_cookies');
         renderCookies();
         updateStats();
-        log('Cleared all cookies!', 'info');
+        log('Cleared all cookies (including saved data)!', 'info');
     } catch (err) {
         console.error('Clear error:', err);
     }
+}
+
+// ============== LOCAL STORAGE (Persistent!) ==============
+
+function saveToLocalStorage() {
+    try {
+        localStorage.setItem('saved_cookies', JSON.stringify(allCookies));
+        console.log('Saved ' + allCookies.length + ' cookies to localStorage');
+    } catch (err) {
+        console.error('localStorage save error:', err);
+    }
+}
+
+function loadFromLocalStorage() {
+    try {
+        const saved = localStorage.getItem('saved_cookies');
+        if (saved) {
+            allCookies = JSON.parse(saved);
+            console.log('Loaded ' + allCookies.length + ' cookies from localStorage');
+            return true;
+        }
+    } catch (err) {
+        console.error('localStorage load error:', err);
+    }
+    return false;
 }
 
 function log(msg, type) {
@@ -462,6 +489,12 @@ function escapeHtml(text) {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
+    // Load cookies from localStorage first (persists forever!)
+    if (loadFromLocalStorage()) {
+        renderCookies();
+        log('Loaded ' + allCookies.length + ' cookies from storage', 'success');
+    }
+    
     updateStats();
     checkAuthStatus();
 });
