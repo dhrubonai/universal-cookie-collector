@@ -1223,12 +1223,12 @@ def generate_dashboard_html() -> str:
         let allCookies = [];
         let isAuthenticated = false;
         
-        // Type emoji map
+        // Type emoji map (using text to avoid encoding issues)
         const typeEmojis = {
-            netflix: '🎬',
-            hotstar: '📺',
-            prime: '📦',
-            crunchyroll: '🍜'
+            netflix: 'NF',
+            hotstar: 'HS',
+            prime: 'PR',
+            crunchyroll: 'CR'
         };
         
         // ============== AUTHENTICATION FUNCTIONS ==============
