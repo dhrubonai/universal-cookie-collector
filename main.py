@@ -7,6 +7,7 @@ Access from: Any browser (Android/iOS/Desktop)
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import re
@@ -245,12 +246,12 @@ def extract_cookie_from_message(message_text: str, cookie_type: str) -> Optional
     # Patterns based on cookie type
     patterns = {
         "netflix": [
-            # Full Netflix URL with nftoken (THIS IS THE CORRECT FORMAT!)
-            r'(https://www\.netflix\.com/browse\?nftoken=[^\s<>"]+)',
-            # Just the nftoken value (long base64 string with +, /, =)
+            # Full Netflix URL with nftoken (PRIMARY - this is what we want!)
+            r'(https://www\.netflix\.com/browse\?nftoken=[^\s"\'<>]+)',
+            # Alternative: nftoken in any URL format
+            r'(https?://[^\s]*nftoken=[^\s]+)',
+            # Fallback: just the nftoken value if URL not present
             r'(nftoken=([A-Za-z0-9+/=]{100,}))',
-            # Fallback: very long strings that look like tokens
-            r'([A-Za-z0-9+/=]{80,})',
         ],
         "hotstar": [
             r'(st=[^;]+)',
@@ -311,6 +312,10 @@ async def run_collection_job(job_id: str):
     job.status = "running"
     job.started_at = datetime.now().isoformat()
     
+    # CRITICAL: Track BOTH message IDs AND cookie contents to avoid duplicates!
+    processed_message_ids = set()
+    collected_cookie_hashes = set()  # Hash of cookie content to detect duplicates
+    
     tg_client = await get_telegram_client()
     
     if not tg_client:
@@ -335,6 +340,8 @@ async def run_collection_job(job_id: str):
         
         # Get last message and click buttons
         clicked_correct_button = False
+        consecutive_duplicates = 0  # Track how many times we got same cookie
+        max_consecutive_duplicates = 3  # After this many duplicates, try harder to get new one
         
         while job.collected_count < job.target_count and job.status == "running":
             # Get latest messages
@@ -353,6 +360,42 @@ async def run_collection_job(job_id: str):
             cookie_data = extract_cookie_from_message(latest_msg.text or "", job.cookie_type)
             
             if cookie_data:
+                # Create hash of cookie content for deduplication
+                cookie_hash = hashlib.sha256(cookie_data.encode()).hexdigest()[:16]
+                
+                # CRITICAL: Check if we've already collected this EXACT cookie before!
+                if cookie_hash in collected_cookie_hashes:
+                    print(f"🔄 DUPLICATE DETECTED! Cookie hash {cookie_hash} already collected")
+                    print(f"   Skipping duplicate, clicking next button...")
+                    consecutive_duplicates += 1
+                    
+                    # Try multiple times to get a new cookie
+                    if consecutive_duplicates >= max_consecutive_duplicates:
+                        print("⚠️ Too many duplicates! Trying aggressive button clicking...")
+                        # Try clicking ALL buttons to force new cookie
+                        if latest_msg.buttons:
+                            for row in latest_msg.buttons:
+                                for btn in row:
+                                    try:
+                                        print(f"🖱️ Force clicking: {btn.text}")
+                                        await btn.click()
+                                        await asyncio.sleep(2)
+                                    except:
+                                        pass
+                        consecutive_duplicates = 0
+                    else:
+                        # Normal next button click
+                        if latest_msg.buttons:
+                            await click_next_button(latest_msg, button_keywords, True)
+                    
+                    print("⏳ Waiting 15 seconds for NEW cookie...")
+                    await asyncio.sleep(15)
+                    continue
+                
+                # This is a NEW unique cookie!
+                consecutive_duplicates = 0  # Reset duplicate counter
+                collected_cookie_hashes.add(cookie_hash)
+                
                 # Save the cookie
                 job.collected_count += 1
                 new_cookie = CollectedCookie(
@@ -365,58 +408,20 @@ async def run_collection_job(job_id: str):
                 job.cookies.append(new_cookie)
                 all_cookies.append(new_cookie)
                 
-                print(f"✅ Collected cookie #{job.collected_count}/{job.target_count}")
+                print(f"✅ UNIQUE cookie #{job.collected_count}/{job.target_count} collected!")
+                print(f"   Hash: {cookie_hash}")
+                print(f"   Preview: {cookie_data[:80]}..." )
                 
                 # Also save to file
                 save_cookie_to_file(new_cookie)
+            else:
+                print(f"ℹ️ No cookie found in message {latest_msg.id}")
             
             # Look for buttons to click (Next, More, etc.)
             if latest_msg.buttons:
-                button_clicked = False
-                
-                # Priority keywords for next cookie
-                next_keywords = ["next", "get another", "more", "➡️", "▶️", "→", "again"]
-                
-                # First time: look for cookie-type-specific buttons
-                if not clicked_correct_button:
-                    for keyword in button_keywords:
-                        for row in latest_msg.buttons:
-                            for btn in row:
-                                if keyword.lower() in btn.text.lower():
-                                    print(f"🖱️ Clicking: {btn.text}")
-                                    await btn.click()
-                                    button_clicked = True
-                                    clicked_correct_button = True
-                                    break
-                            if button_clicked:
-                                break
-                        if button_clicked:
-                            break
-                
-                # If already selected type, look for "next" buttons
-                else:
-                    for keyword in next_keywords:
-                        for row in latest_msg.buttons:
-                            for btn in row:
-                                if keyword.lower() in btn.text.lower():
-                                    print(f"🖱️ Clicking Next: {btn.text}")
-                                    await btn.click()
-                                    button_clicked = True
-                                    break
-                            if button_clicked:
-                                break
-                        if button_clicked:
-                            break
-                    
-                    # If no "next" found, click first button
-                    if not button_clicked:
-                        try:
-                            first_btn = latest_msg.buttons[0][0]
-                            print(f"🖱️ Clicking first button: {first_btn.text}")
-                            await first_btn.click()
-                            button_clicked = True
-                        except:
-                            pass
+                clicked = await click_next_button(latest_msg, button_keywords, clicked_correct_button)
+                if clicked:
+                    clicked_correct_button = True
             
             # Wait before next iteration (15 seconds for bot to generate cookie!)
             print("⏳ Waiting 15 seconds for next cookie...")
@@ -429,13 +434,55 @@ async def run_collection_job(job_id: str):
             job.status = "completed"  # Stopped by user or other reason
         
         job.completed_at = datetime.now().isoformat()
-        print(f"\n🎉 Job {job_id} completed! Collected {job.collected_count} cookies")
+        print(f"\n🎉 Job {job_id} completed! Collected {job.collected_count} UNIQUE cookies")
         
     except Exception as e:
         print(f"❌ Job failed: {e}")
         job.status = "error"
         job.error = str(e)
         job.completed_at = datetime.now().isoformat()
+
+
+async def click_next_button(message, button_keywords: list, already_selected_type: bool) -> bool:
+    """
+    Click the appropriate button to get the next cookie.
+    Returns True if a button was clicked, False otherwise.
+    """
+    if not message.buttons:
+        return False
+    
+    # Priority keywords for getting next cookie
+    next_keywords = ["next", "get another", "more", "➡️", "▶️", "→", "again", "nf cookie", "cookie", "get"]
+    
+    # First time: look for cookie-type-specific buttons (Netflix, Hotstar, etc.)
+    if not already_selected_type:
+        for keyword in button_keywords:
+            for row in message.buttons:
+                for btn in row:
+                    if keyword.lower() in btn.text.lower():
+                        print(f"🖱️ Clicking type button: {btn.text}")
+                        await btn.click()
+                        return True
+    
+    # Look for "next" or action buttons to get another cookie
+    for keyword in next_keywords:
+        for row in message.buttons:
+            for btn in row:
+                if keyword.lower() in btn.text.lower():
+                    print(f"🖱️ Clicking action button: {btn.text}")
+                    await btn.click()
+                    return True
+    
+    # Last resort: click first available button
+    try:
+        first_btn = message.buttons[0][0]
+        print(f"🖱️ Clicking first/fallback button: {first_btn.text}")
+        await first_btn.click()
+        return True
+    except Exception as e:
+        print(f"⚠️ Could not click button: {e}")
+    
+    return False
 
 
 def save_cookie_to_file(cookie: CollectedCookie):
