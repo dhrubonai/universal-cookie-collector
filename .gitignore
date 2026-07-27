@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Sessions (contain auth data - don't share!)
+sessions/
+*.session
+
+# Data files
+collected_data.json
+data/
+*.db
+
+# Environment
+.env
+.env.local
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Render/Railway specific
+.render/

@@ -1,0 +1,33 @@
+# Render.com Deployment Configuration
+# Universal Cookie Collector - Deploy with one click!
+
+services:
+  # Web Service - The API + Dashboard
+  - type: web
+    name: universal-cookie-collector
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: PORT
+        value: 8000
+        sync: false
+    # Auto-deploy from GitHub
+    plan: free  # or starter for more resources
+    
+    # Health check
+    healthCheckPath: /
+    
+    # Don't let it sleep (important for background jobs!)
+    # Note: Free tier may sleep, use worker for always-on
+
+  # Background Worker - For long-running collection jobs
+  # Uncomment if you need persistent collection:
+  # - type: worker
+  #   name: cookie-worker
+  #   runtime: python
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python main.py
+  #   envVars:
+  #     - key: WORKER_MODE
+  #       value: "true"

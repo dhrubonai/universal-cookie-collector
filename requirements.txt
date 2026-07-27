@@ -1,0 +1,15 @@
+# Universal Cookie Collector - Dependencies
+# For Render.com deployment
+
+# Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Telegram Automation (MTProto API)
+telethon[cryptg]==1.34.0
+
+# CORS support
+python-multipart==0.0.6
+
+# Async utilities
+aiofiles==23.2.1
