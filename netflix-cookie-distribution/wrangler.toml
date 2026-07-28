@@ -1,0 +1,7 @@
+name = "netflix-cookie-distribution"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_id = "a45fb4ef-f162-41c1-bea4-60ab19569528"
