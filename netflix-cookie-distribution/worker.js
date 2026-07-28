@@ -214,7 +214,7 @@ async function getCookieForUser(request, env, ip, sessionId, headers) {
   }
   const cookie = await env.DB.prepare(
     `SELECT * FROM cookies 
-         WHERE usage_count < 2
+         WHERE usage_count < 1
          ORDER BY usage_count ASC, uploaded_at ASC
          LIMIT 1`
   ).first();
@@ -462,23 +462,23 @@ async function getCookies(request, env, headers) {
   let baseQuery = "SELECT * FROM cookies";
   const params = [];
   if (filter === "unused") {
-    baseQuery += " WHERE usage_count < 2";
+    baseQuery += " WHERE usage_count < 1";
   } else if (filter === "used") {
-    baseQuery += " WHERE usage_count >= 2";
+    baseQuery += " WHERE usage_count >= 1";
   }
   baseQuery += " ORDER BY uploaded_at DESC";
   const allCookies = await env.DB.prepare(baseQuery).bind(...params).all();
   const processedCookies = (allCookies.results || []).map((cookie, index) => ({
     ...cookie,
     display_id: index + 1 + offset,
-    is_used: cookie.usage_count >= 2,
-    remaining_uses: Math.max(0, 2 - cookie.usage_count),
-    status_text: cookie.usage_count >= 2 ? "Used" : cookie.usage_count === 1 ? "Used Once" : "Unused"
+    is_used: cookie.usage_count >= 1,
+    remaining_uses: Math.max(0, 1 - cookie.usage_count),
+    status_text: cookie.usage_count >= 1 ? "Used" : "Unused"
   }));
   const paginatedCookies = processedCookies.slice(offset, offset + limit);
   const totalCount = processedCookies.length;
-  const unusedCount = (allCookies.results || []).filter((c) => c.usage_count < 2).length;
-  const usedCount = (allCookies.results || []).filter((c) => c.usage_count >= 2).length;
+  const unusedCount = (allCookies.results || []).filter((c) => c.usage_count < 1).length;
+  const usedCount = (allCookies.results || []).filter((c) => c.usage_count >= 1).length;
   return new Response(JSON.stringify({
     cookies: paginatedCookies,
     summary: {
@@ -499,7 +499,7 @@ async function getCookies(request, env, headers) {
 __name(getCookies, "getCookies");
 async function deleteUsedCookies(env, headers) {
   const usedCookies = await env.DB.prepare(
-    "SELECT id FROM cookies WHERE usage_count >= 2"
+    "SELECT id FROM cookies WHERE usage_count >= 1"
   ).all();
   if (usedCookies.results && usedCookies.results.length > 0) {
     const ids = usedCookies.results.map((c) => c.id);
@@ -508,7 +508,7 @@ async function deleteUsedCookies(env, headers) {
     }
   }
   const result = await env.DB.prepare(
-    "DELETE FROM cookies WHERE usage_count >= 2"
+    "DELETE FROM cookies WHERE usage_count >= 1"
   ).run();
   try {
     await env.DB.prepare(
@@ -575,10 +575,10 @@ async function getAnalytics(env, headers) {
     "SELECT COUNT(*) as count FROM cookies"
   ).first();
   const unusedCookies = await env.DB.prepare(
-    "SELECT COUNT(*) as count FROM cookies WHERE usage_count < 2"
+    "SELECT COUNT(*) as count FROM cookies WHERE usage_count < 1"
   ).first();
   const usedCookies = await env.DB.prepare(
-    "SELECT COUNT(*) as count FROM cookies WHERE usage_count >= 2"
+    "SELECT COUNT(*) as count FROM cookies WHERE usage_count >= 1"
   ).first();
   const totalUsage = await env.DB.prepare(
     "SELECT COUNT(*) as count FROM usage_log"
@@ -630,7 +630,7 @@ async function getAnalytics(env, headers) {
 __name(getAnalytics, "getAnalytics");
 async function getPublicStats(env, headers) {
   const unusedCookies = await env.DB.prepare(
-    "SELECT COUNT(*) as count FROM cookies WHERE usage_count < 2"
+    "SELECT COUNT(*) as count FROM cookies WHERE usage_count < 1"
   ).first();
   return new Response(JSON.stringify({
     available_cookies: unusedCookies.count,
@@ -1545,7 +1545,7 @@ var ADMIN_HTML = `<!DOCTYPE html>
                         '<td>' + cookie.display_id + '</td>' +
                         '<td style="font-family:monospace;font-size:0.85rem">' + cookie.nftoken.substring(0, 30) + '...' + cookie.nftoken.substring(cookie.nftoken.length - 10) + '</td>' +
                         '<td><span class="badge badge-' + (cookie.is_used ? 'used' : (cookie.usage_count === 1 ? 'used-once' : 'unused')) + '">' + cookie.status_text + '</span></td>' +
-                        '<td>' + cookie.usage_count + ' / 2</td>' +
+                        '<td>' + cookie.usage_count + ' / 1</td>' +
                         '<td>' + (cookie.last_used_at ? new Date(cookie.last_used_at).toLocaleDateString() : 'Never') + '</td>' +
                         '<td><button class="btn btn-sm btn-danger" onclick="deleteSingleCookie(' + cookie.id + ')">Delete</button></td>' +
                     '</tr>';
