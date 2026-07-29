@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe Checker Pro | Premium Card Validation Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a25;
+            --accent-primary: #7c3aed;
+            --accent-secondary: #a855f7;
+            --accent-gradient: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #6366f1 100%);
+            --text-primary: #ffffff;
+            --text-secondary: #a1a1aa;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --border-color: rgba(124, 58, 237, 0.3);
+            --glow: 0 0 30px rgba(124, 58, 237, 0.4);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: var(--bg-primary);
+            overflow: hidden;
+        }
+
+        .bg-animation::before,
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.15;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .bg-animation::before {
+            background: var(--accent-primary);
+            top: -200px;
+            left: -200px;
+        }
+
+        .bg-animation::after {
+            background: var(--accent-secondary);
+            bottom: -200px;
+            right: -200px;
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(100px, 50px) scale(1.1); }
+            66% { transform: translate(-50px, 100px) scale(0.9); }
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--accent-gradient);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: var(--glow);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-top: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(124, 58, 237, 0.2);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--accent-secondary);
+            margin-top: 15px;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px 60px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 12px 28px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(124, 58, 237, 0.15);
+            color: var(--text-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .tab-btn.active {
+            background: var(--accent-gradient);
+            color: white;
+            border-color: transparent;
+            box-shadow: var(--glow);
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+        }
+
+        @media (max-width: 600px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel */
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .panel-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title span {
+            font-size: 1.5rem;
+        }
+
+        /* Textarea */
+        .input-area {
+            width: 100%;
+            min-height: 220px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px;
+            color: var(--text-primary);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.95rem;
+            resize: vertical;
+            transition: all 0.3s ease;
+            line-height: 1.6;
+        }
+
+        .input-area:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 20px rgba(124, 58, 237, 0.25);
+        }
+
+        .input-area::placeholder {
+            color: #555;
+        }
+
+        .format-hint {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: rgba(124, 58, 237, 0.08);
+            border-radius: 8px;
+            line-height: 1.5;
+        }
+
+        .format-hint code {
+            background: rgba(124, 58, 237, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            color: var(--accent-secondary);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            justify-content: center;
+            min-width: 140px;
+        }
+
+        .btn-primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(124, 58, 237, 0.5);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(124, 58, 237, 0.15);
+            border-color: var(--accent-primary);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Generator Section */
+        .generator-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 500px) {
+            .generator-inputs {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .input-field {
+            padding: 14px 16px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: 'Consolas', monospace;
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
+        }
+
+        .generator-output {
+            width: 100%;
+            min-height: 180px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px;
+            color: var(--text-primary);
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+            line-height: 1.7;
+        }
+
+        .generator-output:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            width: 0%;
+            position: relative;
+        }
+
+        .progress-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Results Table */
+        .results-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results-container.active {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .results-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-badge {
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-live {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .stat-dead {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .stat-total {
+            background: rgba(124, 58, 237, 0.15);
+            color: var(--accent-secondary);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+        }
+
+        th, td {
+            padding: 16px 18px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        th {
+            background: rgba(124, 58, 237, 0.1);
+            font-weight: 700;
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover {
+            background: rgba(124, 58, 237, 0.05);
+        }
+
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.82rem;
+            display: inline-block;
+        }
+
+        .status-live {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-dead {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--error);
+        }
+
+        .status-error {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .card-number {
+            font-family: 'Consolas', monospace;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .card-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-icon {
+            width: 32px;
+            height: 22px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 900;
+        }
+
+        .brand-visa { background: #1434CB; color: white; }
+        .brand-mc { background: #EB001B; color: white; }
+        .brand-amex { background: #006FCF; color: white; }
+        .brand-discover { background: #FF6000; color: white; }
+        .brand-jcb { background: #0B4EA2; color: white; }
+        .brand-diners { background: #0079BE; color: white; }
+        .brand-unknown { background: #444; color: white; }
+
+        .response-msg {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            max-width: 250px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 28px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(150%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--error);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: var(--accent-secondary);
+            text-decoration: none;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .panel { padding: 20px; }
+            .btn { padding: 12px 20px; font-size: 0.9rem; }
+            th, td { padding: 12px 10px; font-size: 0.82rem; }
+            .stats-row { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+
+    <header>
+        <div class="logo">
+            <div class="logo-icon">💳</div>
+        </div>
+        <h1>Stripe Checker Pro</h1>
+        <p class="subtitle">Premium Card Validation Tool with Stripe Integration</p>
+        <span class="badge">🔒 Test Mode • Secure Processing</span>
+    </header>
+
+    <main class="container">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="checker">🔍 Card Checker</button>
+            <button class="tab-btn" data-tab="generator">🎲 CC Generator</button>
+        </div>
+
+        <div class="cards-grid">
+            <!-- Checker Panel -->
+            <div id="checker-panel" class="panel" style="grid-column: 1 / -1;">
+                <div class="panel-header">
+                    <h2 class="panel-title"><span>📥</span> Input Cards</h2>
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Bulk Check Supported</span>
+                </div>
+
+                <textarea id="cardInput" class="input-area" placeholder="Enter cards here... One per line
+
+Supported formats:
+• 4111111111111111|12|25|123
+• 4111111111111111 12/25 123
+• 4111111111111111/1225123
+• 5455123456789012|01|26|456"></textarea>
+
+                <div class="format-hint">
+                    <strong>Format:</strong> <code>CCNumber|MM|YY|CVV</code> or <code>CC MM/YY CVV</code><br>
+                    Example: <code>4242424242424242|12|28|123</code> → Visa ending in 4242
+                </div>
+
+                <div class="btn-group">
+                    <button id="checkBtn" class="btn btn-primary" onclick="startChecking()">
+                        🔍 Check All Cards
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearInput()">
+                        🗑️ Clear
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadSample()">
+                        📋 Load Sample
+                    </button>
+                </div>
+
+                <!-- Progress -->
+                <div id="progressContainer" class="progress-container">
+                    <div class="progress-bar-bg">
+                        <div id="progressBar" class="progress-bar-fill"></div>
+                    </div>
+                    <p id="progressText" class="progress-text">Processing... 0/0</p>
+                </div>
+
+                <!-- Results -->
+                <div id="resultsContainer" class="results-container">
+                    <div class="results-header">
+                        <h3 class="results-title">📊 Results</h3>
+                        <div class="stats-row">
+                            <span id="statTotal" class="stat-badge stat-total">Total: 0</span>
+                            <span id="statLive" class="stat-badge stat-live">✅ Live: 0</span>
+                            <span id="statDead" class="stat-badge stat-dead">❌ Dead: 0</span>
+                            <button class="btn btn-success" style="min-width: auto; padding: 10px 20px;" onclick="copyLive()">
+                                📋 Copy Live
+                            </button>
+                            <button class="btn btn-secondary" style="min-width: auto; padding: 10px 20px;" onclick="exportCSV()">
+                                💾 Export CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Card Number</th>
+                                    <th>Brand</th>
+                                    <th>Expiry</th>
+                                    <th>Status</th>
+                                    <th>Response</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resultsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generator Panel -->
+            <div id="generator-panel" class="panel" style="display: none; grid-column: 1 / -1;">
+                <div class="panel-header">
+                    <h2 class="panel-title"><span>🎲</span> Credit Card Generator</h2>
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">BIN-Based Generation</span>
+                </div>
+
+                <div class="generator-inputs">
+                    <div class="input-group">
+                        <label>🏦 BIN (First 6 digits)</label>
+                        <input type="text" id="binInput" class="input-field" placeholder="411111" maxlength="8" pattern="[0-9]*">
+                    </div>
+                    <div class="input-group">
+                        <label>🔢 Quantity to Generate</label>
+                        <input type="number" id="quantityInput" class="input-field" placeholder="10" value="10" min="1" max="10000">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 8px;">
+                        💳 Quick BIN Presets:
+                    </label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.8rem; min-width: auto;" onclick="setBIN('411111')">Visa</button>
+                        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.8rem; min-width: auto;" onclick="setBIN('542400')">Mastercard</button>
+                        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.8rem; min-width: auto;" onclick="setBIN('370000')">Amex</button>
+                        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.8rem; min-width: auto;" onclick="setBIN('601100')">Discover</button>
+                        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.8rem; min-width: auto;" onclick="setBIN('353011')">JCB</button>
+                        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.8rem; min-width: auto;" onclick="setBIN('300000')">Diners</button>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button id="generateBtn" class="btn btn-primary" onclick="generateCards()">
+                        ✨ Generate Cards
+                    </button>
+                    <button class="btn btn-success" onclick="copyGenerated()">
+                        📋 Copy All Generated
+                    </button>
+                    <button class="btn btn-secondary" onclick="pasteToChecker()">
+                        ➡️ Send to Checker
+                    </button>
+                </div>
+
+                <textarea id="generatorOutput" class="generator-output" placeholder="Generated cards will appear here...
+
+Format: CC|MM|YY|CVV"></textarea>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <p>Stripe Checker Pro • Educational Tool • Test Mode Only</p>
+        <p style="margin-top: 8px;">Powered by <a href="https://stripe.com" target="_blank">Stripe API</a></p>
+    </footer>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Global state
+        let results = [];
+        let isChecking = false;
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                const tab = btn.dataset.tab;
+                document.getElementById('checker-panel').style.display = tab === 'checker' ? '' : 'none';
+                document.getElementById('generator-panel').style.display = tab === 'generator' ? '' : 'none';
+            });
+        });
+
+        // Parse cards from input
+        function parseCards(input) {
+            if (!input.trim()) return [];
+            
+            const lines = input.split('\n')
+                .map(l => l.trim())
+                .filter(l => l.length > 0);
+
+            const cards = [];
+            
+            for (const line of lines) {
+                let card = null;
+                
+                // Try format: CC|MM|YY|CVV or CC|MM/YYYY|CVV
+                if (line.includes('|')) {
+                    const parts = line.replace(/\s+/g, '').split('|');
+                    if (parts.length >= 4) {
+                        card = {
+                            cc: parts[0],
+                            mm: String(parts[1]).padStart(2, '0'),
+                            yy: String(parts[2]).length === 4 ? String(parts[2]).substring(2, 4) : String(parts[2]).padStart(2, '0'),
+                            cvv: parts[3]
+                        };
+                    } else if (parts.length === 3) {
+                        // Format: CC|MMYY|CVV
+                        const datePart = String(parts[1]);
+                        card = {
+                            cc: parts[0],
+                            mm: datePart.substring(0, 2),
+                            yy: datePart.substring(2, 4),
+                            cvv: parts[2]
+                        };
+                    }
+                }
+                
+                // Try format: CC MM/YY CVV or CC/MM/YY/CVV
+                else if (line.includes('/') || /\s+/.test(line)) {
+                    const cleaned = line.replace(/\//g, ' ').replace(/\s+/g, ' ').trim();
+                    const parts = cleaned.split(/\s+/);
+                    
+                    if (parts.length >= 3) {
+                        const cc = parts[0];
+                        
+                        // Find date part (contains /)
+                        let mm = '', yy = '';
+                        for (let i = 1; i < parts.length - 1; i++) {
+                            if (parts[i].includes('/')) {
+                                const dateParts = parts[i].split('/');
+                                mm = dateParts[0];
+                                yy = dateParts[1].length === 4 ? dateParts[1].substring(2, 4) : dateParts[1];
+                                break;
+                            }
+                        }
+                        
+                        // If no slash found, assume next part is MMYY
+                        if (!mm && parts.length >= 3) {
+                            const dateStr = String(parts[1]);
+                            if (dateStr.length === 4) {
+                                mm = dateStr.substring(0, 2);
+                                yy = dateStr.substring(2, 4);
+                            } else if (dateStr.length === 2 && parts[2]) {
+                                mm = dateStr;
+                                yy = String(parts[2]).length >= 2 ? String(parts[2]).substring(0, 2) : '';
+                            }
+                        }
+                        
+                        const cvv = parts[parts.length - 1];
+                        
+                        if (cc && mm && yy && cvv) {
+                            card = { cc, mm: String(mm).padStart(2, '0'), yy: String(yy).padStart(2, '0'), cvv };
+                        }
+                    }
+                }
+                
+                // Validate card number (13-19 digits)
+                if (card && card.cc) {
+                    const digitsOnly = card.cc.replace(/\D/g, '');
+                    if (/^\d{13,19}$/.test(digitsOnly)) {
+                        card.cc = digitsOnly;
+                        cards.push(card);
+                    }
+                }
+            }
+            
+            return cards;
+        }
+
+        // Detect card brand
+        function detectBrand(cc) {
+            const firstTwo = cc.substring(0, 2);
+            const firstFour = cc.substring(0, 4);
+            const firstSix = cc.substring(0, 6);
+
+            // Visa
+            if (cc.startsWith('4')) return { name: 'Visa', class: 'brand-visa', icon: 'V' };
+            
+            // Mastercard
+            if ((firstTwo >= '51' && firstTwo <= '55') || 
+                ['2221', '2222', '2223', '2224', '2225', '2226', '2227', '2228', '2229', '223',
+                 '224', '225', '226', '227', '228', '229', '23', '24', '25', '26', '271', '272'].some(p => firstSix.startsWith(p) || firstFour.startsWith(p))) {
+                return { name: 'Mastercard', class: 'brand-mc', icon: 'MC' };
+            }
+            
+            // Amex (15 digits)
+            if (cc.startsWith('34') || cc.startsWith('37')) return { name: 'Amex', class: 'brand-amex', icon: 'AX' };
+            
+            // Discover
+            if (cc.startsWith('6011') || cc.startsWith('65') || 
+                (parseInt(firstSix) >= 622126 && parseInt(firstSix) <= 622925) ||
+                cc.startsWith('64') || cc.startsWith('65')) {
+                return { name: 'Discover', class: 'brand-discover', icon: 'DS' };
+            }
+            
+            // JCB
+            if ((parseInt(firstFour) >= 3528 && parseInt(firstFour) <= 3589)) {
+                return { name: 'JCB', class: 'brand-jcb', icon: 'JB' };
+            }
+            
+            // Diners Club
+            if (cc.startsWith('36') || cc.startsWith('38') || cc.startsWith('39') ||
+                cc.startsWith('30') || cc.startsWith('34') || cc.startsWith('35')) {
+                return { name: 'Diners', class: 'brand-diners', icon: 'DC' };
+            }
+            
+            return { name: 'Unknown', class: 'brand-unknown', icon: '?' };
+        }
+
+        // Luhn algorithm check
+        function luhnCheck(cardNum) {
+            const digits = cardNum.replace(/\D/g, '');
+            if (!/^\d+$/.test(digits) || digits.length < 13) return false;
+            
+            let sum = 0;
+            let isEven = false;
+            
+            for (let i = digits.length - 1; i >= 0; i--) {
+                let digit = parseInt(digits[i], 10);
+                
+                if (isEven) {
+                    digit *= 2;
+                    if (digit > 9) digit -= 9;
+                }
+                
+                sum += digit;
+                isEven = !isEven;
+            }
+            
+            return sum % 10 === 0;
+        }
+
+        // Start checking cards
+        async function startChecking() {
+            const input = document.getElementById('cardInput').value;
+            const cards = parseCards(input);
+
+            if (cards.length === 0) {
+                showToast('Please enter valid card(s)', 'error');
+                return;
+            }
+
+            if (isChecking) return;
+            isChecking = true;
+
+            results = [];
+            const btn = document.getElementById('checkBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Checking...';
+
+            // Show progress
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressContainer.classList.add('active');
+
+            // Show results container
+            const resultsContainer = document.getElementById('resultsContainer');
+            resultsContainer.classList.add('active');
+
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                const progress = Math.round(((i + 1) / cards.length) * 100);
+                
+                progressBar.style.width = progress + '%';
+                progressText.textContent = `Processing... ${i + 1}/${cards.length}`;
+
+                try {
+                    const result = await checkCardWithStripe(card);
+                    results.push(result);
+                    addResultRow(result, i + 1);
+                } catch (error) {
+                    results.push({
+                        ...card,
+                        status: 'Error',
+                        message: error.message || 'Request failed'
+                    });
+                    addResultRow({
+                        ...card,
+                        status: 'Error',
+                        message: error.message || 'Request failed'
+                    }, i + 1);
+                }
+
+                // Small delay between requests
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            // Update stats
+            updateStats();
+
+            // Reset UI
+            btn.disabled = false;
+            btn.innerHTML = '🔍 Check All Cards';
+            isChecking = false;
+            progressText.textContent = `✅ Complete! ${cards.length} cards processed`;
+
+            showToast(`Finished! ${results.filter(r => r.status === 'Live').length} live cards found`, 'success');
+        }
+
+        // Check single card with Stripe API (via our worker proxy)
+        async function checkCardWithStripe(card) {
+            const response = await fetch('/api/check-stripe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    number: card.cc,
+                    exp_month: parseInt(card.mm),
+                    exp_year: parseInt('20' + card.yy),
+                    cvc: card.cvv
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                return {
+                    ...card,
+                    status: 'Dead',
+                    message: data.error_message || data.error,
+                    rawResponse: data
+                };
+            }
+
+            // Stripe response handling
+            if (data.status === 'succeeded' || data.status === 'requires_capture') {
+                return {
+                    ...card,
+                    status: 'Live',
+                    message: 'Approved - Card Valid',
+                    transactionId: data.id || '',
+                    rawResponse: data
+                };
+            } else if (data.decline_code) {
+                return {
+                    ...card,
+                    status: 'Dead',
+                    message: `Declined: ${data.decline_code}`,
+                    declineCode: data.decline_code,
+                    rawResponse: data
+                };
+            } else {
+                return {
+                    ...card,
+                    status: 'Error',
+                    message: data.message || 'Unknown response',
+                    rawResponse: data
+                };
+            }
+        }
+
+        // Add row to results table
+        function addResultRow(result, index) {
+            const tbody = document.getElementById('resultsBody');
+            const brand = detectBrand(result.cc);
+            
+            // Mask card number
+            const maskedCC = result.cc.substring(0, 4) + 'XXXXXX' + result.cc.substring(result.cc.length - 4);
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index}</td>
+                <td class="card-number">${maskedCC}</td>
+                <td>
+                    <div class="card-brand">
+                        <span class="brand-icon ${brand.class}">${brand.icon}</span>
+                        ${brand.name}
+                    </div>
+                </td>
+                <td>${result.mm}/${result.yy}</td>
+                <td><span class="status-badge status-${result.status.toLowerCase()}">${result.status}</span></td>
+                <td class="response-msg">${result.message}</td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        // Update statistics
+        function updateStats() {
+            const total = results.length;
+            const live = results.filter(r => r.status === 'Live').length;
+            const dead = results.filter(r => r.status === 'Dead').length;
+
+            document.getElementById('statTotal').textContent = `Total: ${total}`;
+            document.getElementById('statLive').textContent = `✅ Live: ${live}`;
+            document.getElementById('statDead').textContent = `❌ Dead: ${dead}`;
+        }
+
+        // Generate credit cards from BIN
+        function generateCards() {
+            const bin = document.getElementById('binInput').value.replace(/\D/g, '');
+            const quantity = parseInt(document.getElementById('quantityInput').value) || 10;
+
+            if (bin.length < 6) {
+                showToast('Please enter at least 6-digit BIN', 'error');
+                return;
+            }
+
+            if (quantity < 1 || quantity > 10000) {
+                showToast('Quantity must be between 1 and 10,000', 'error');
+                return;
+            }
+
+            const output = document.getElementById('generatorOutput');
+            let generated = [];
+
+            for (let i = 0; i < quantity; i++) {
+                const card = generateSingleCard(bin);
+                generated.push(`${card.cc}|${card.mm}|${card.yy}|${card.cvv}`);
+            }
+
+            output.value = generated.join('\n');
+            showToast(`Generated ${quantity} cards successfully!`, 'success');
+        }
+
+        // Generate single valid card using Luhn algorithm
+        function generateSingleCard(bin) {
+            // Determine card length based on BIN
+            let length = 16;
+            if (bin.startsWith('34') || bin.startsWith('37')) length = 15; // Amex
+            
+            // Generate random digits for remaining positions (except last)
+            let cardNum = bin;
+            while (cardNum.length < length - 1) {
+                cardNum += Math.floor(Math.random() * 10);
+            }
+
+            // Calculate Luhn check digit
+            cardNum += calculateLuhnCheckDigit(cardNum);
+
+            // Generate random expiry (future date)
+            const now = new Date();
+            const futureMonths = Math.floor(Math.random() * 48) + 1; // 1-48 months in future
+            const expDate = new Date(now.getFullYear(), now.getMonth() + futureMonths);
+            const mm = String(expDate.getMonth() + 1).padStart(2, '0');
+            const yy = String(expDate.getFullYear()).substring(2);
+
+            // Generate random CVV (3 digits, or 4 for Amex)
+            const cvvLength = bin.startsWith('34') || bin.startsWith('37') ? 4 : 3;
+            let cvv = '';
+            for (let i = 0; i < cvvLength; i++) {
+                cvv += Math.floor(Math.random() * 10);
+            }
+
+            return { cc: cardNum, mm, yy, cvv };
+        }
+
+        // Calculate Luhn check digit
+        function calculateLuhnCheckDigit(number) {
+            let sum = 0;
+            let isEven = true;
+
+            for (let i = number.length - 1; i >= 0; i--) {
+                let digit = parseInt(number[i], 10);
+
+                if (isEven) {
+                    digit *= 2;
+                    if (digit > 9) digit -= 9;
+                }
+
+                sum += digit;
+                isEven = !isEven;
+            }
+
+            const checkDigit = (10 - (sum % 10)) % 10;
+            return checkDigit.toString();
+        }
+
+        // Set BIN from preset buttons
+        function setBIN(bin) {
+            document.getElementById('binInput').value = bin;
+        }
+
+        // Copy generated cards
+        function copyGenerated() {
+            const output = document.getElementById('generatorOutput');
+            if (!output.value) {
+                showToast('No cards to copy', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(output.value);
+            showToast('Copied to clipboard!', 'success');
+        }
+
+        // Paste generated cards to checker
+        function pasteToChecker() {
+            const output = document.getElementById('generatorOutput');
+            if (!output.value) {
+                showToast('No cards to transfer', 'error');
+                return;
+            }
+            document.getElementById('cardInput').value = output.value;
+            
+            // Switch to checker tab
+            document.querySelector('[data-tab="checker"]').click();
+            showToast('Cards sent to checker!', 'success');
+        }
+
+        // Copy live cards only
+        function copyLive() {
+            const liveCards = results
+                .filter(r => r.status === 'Live')
+                .map(r => `${r.cc}|${r.mm}|${r.yy}|${r.cvv}`)
+                .join('\n');
+
+            if (!liveCards) {
+                showToast('No live cards to copy', 'error');
+                return;
+            }
+
+            navigator.clipboard.writeText(liveCards);
+            showToast(`Copied ${liveCards.split('\n').length} live cards!`, 'success');
+        }
+
+        // Export to CSV
+        function exportCSV() {
+            if (results.length === 0) {
+                showToast('No results to export', 'error');
+                return;
+            }
+
+            const headers = ['#', 'Card Number', 'Brand', 'Expiry', 'CVV', 'Status', 'Message'];
+            const rows = results.map((r, i) => [
+                i + 1,
+                r.cc,
+                detectBrand(r.cc).name,
+                `${r.mm}/${r.yy}`,
+                r.cvv,
+                r.status,
+                r.message
+            ]);
+
+            const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `stripe-checker-${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast('CSV exported!', 'success');
+        }
+
+        // Clear input
+        function clearInput() {
+            document.getElementById('cardInput').value = '';
+            document.getElementById('resultsBody').innerHTML = '';
+            document.getElementById('resultsContainer').classList.remove('active');
+            document.getElementById('progressContainer').classList.remove('active');
+            results = [];
+        }
+
+        // Load sample test cards
+        function loadSample() {
+            const sampleCards = `4242424242424242|12|28|123
+4000056655665556|01|29|456
+5555555555554444|06|27|789
+378282246310005|03|28|1234
+6011111111111117|09|26|456
+3530111333300000|12|28|123`;
+            document.getElementById('cardInput').value = sampleCards;
+            showToast('Sample test cards loaded!', 'success');
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Initialize
+        console.log('%c🔒 Stripe Checker Pro - Test Mode', 'color: #a855f7; font-size: 16px; font-weight: bold;');
+        console.log('%cAll transactions are in Stripe test mode - No real charges', 'color: #10b981;');
+    </script>
+</body>
+</html>
