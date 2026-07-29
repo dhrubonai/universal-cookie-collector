@@ -44,51 +44,43 @@ A **production-grade** Telegram bot for distributing Netflix cookies with advanc
 3. Get channel ID using **@userinfobot**
 4. Note the channel username (without @)
 
-### 3. Deploy to Render (Free 24/7 Hosting)
+### 3. Deploy to FREE 24/7 Hosting (NEVER SLEEPS!)
 
-#### Option A: Using Git Push (Recommended)
+⚠️ **AVOID RENDER** - Their free tier sleeps after 15 minutes!
+
+#### 🥇 RECOMMENDED: justrunmy.app (Easiest, Truly 24/7, Free Forever)
+
+**Why it's perfect:** Built specifically for Telegram bots, never sleeps!
 
 ```bash
-# Clone or navigate to project
+# Quick deploy:
 cd netflix-cookie-bot
-
-# Initialize git
-git init
-git add .
-git commit -m "Initial commit"
-
-# Create repository on GitHub and push
-git remote add origin YOUR_GITHUB_REPO_URL
-git push -u origin main
+./deploy.sh  # Choose option 1
 ```
 
-Then:
-1. Go to [render.com](https://render.com)
-2. Click **"New +"** → **"Web Service"**
-3. Connect your GitHub repository
-4. Configure:
-   - **Runtime**: Python
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python main.py`
-5. Add environment variables (see below)
-6. Click **"Deploy Web Service"**
+Or manually:
+1. Go to [justrunmy.app](https://justrunmy.app) ✅
+2. Sign up free
+3. Click "New Bot"
+4. Upload code or connect GitHub
+5. Set environment variables (see below)
+6. **Deploy! Running 24/7 forever!** 🎉
 
-#### Option B: Using Render CLI
+#### Other Great Options (All FREE & 24/7):
 
-```bash
-# Install Render CLI
-npm install -g render-cli
+| Platform | Best For | Setup Time | Link |
+|---------|----------|------------|------|
+| **justrunmy.app** | Beginners | 5 min | [Link](https://justrunmy.app) |
+| **TeleBotHost** | 1-click deploy | 3 min | [Link](https://telebothost.com) |
+| **fps.ms** | Python devs | 5 min | [Link](https://fps.ms) |
+| **pella.app** | Pro features | 10 min | [Link](https://pella.app/free-telegram-bot-hosting) |
+| **Koyeb** | Enterprise feel | 15 min | [Link](https://koyeb.com) |
 
-# Login
-render login
-
-# Deploy
-render deploy --env ./render.yaml
-```
+📖 See [DEPLOYMENT_OPTIONS.md](DEPLOYMENT_OPTIONS.md) for detailed guides!
 
 ### 4. Set Environment Variables
 
-In Render dashboard, add these environment variables:
+On your hosting platform, add these environment variables:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -134,7 +126,10 @@ netflix-cookie-bot/
 ├── database.py       # SQLite database layer
 ├── config.py         # Configuration & constants
 ├── requirements.txt  # Python dependencies
-├── render.yaml       # Render deployment config
+├── Dockerfile         # Docker configuration
+├── deploy.sh         # Quick deployment helper script
+├── DEPLOYMENT_OPTIONS.md # Detailed hosting guide
+├── render.yaml       # Legacy config (not recommended)
 ├── .env.example      # Environment variables template
 ├── README.md         # This file
 └── netflix_cookies.db # Database (auto-created)
@@ -247,32 +242,41 @@ User Flow:
 - Complete ban audit trail
 - Active/inactive tracking
 
-## 🌐 Free Hosting Options
+## 🌐 Free 24/7 Hosting Options (NO SLEEP!)
 
-### Render.com (Recommended) ✅
-- **Free tier available**
-- 750 hours/month free
-- Auto-deploy from GitHub
-- Easy environment variable setup
-- **Limitation**: Spins down after inactivity (use cron to keep alive)
+### ⭐ TOP RECOMMENDATIONS (Truly Always-On):
 
-### Alternative Hosts:
-- **Railway.app** - Free tier, good for small bots
-- **PythonAnywhere** - Always free for one worker
-- **Fly.io** - Free tier with VM resources
-- **Koyeb** - Free tier available
+**1. justrunmy.app** 🥇
+- ✅ 24/7 Never Sleeps
+- ✅ Built for Telegram bots
+- ✅ Auto-restart on crash
+- ✅ Free forever
+- 👉 [justrunmy.app](https://justrunmy.app)
 
-### Keeping Bot Alive on Render:
-Render free tier spins down after 15 min inactivity. Solutions:
-1. Use [uptimerobot.com](https://uptimerobot.com) (free) to ping every 5 min
-2. Set up a simple cron job
-3. Upgrade to paid ($7/mo) for always-on
+**2. TeleBotHost** 🥈
+- ✅ 24/7 Uptime guaranteed
+- ✅ 1-click deployment
+- ✅ Optimized for Telegram
+- 👉 [telebothost.com](https://telebothost.com)
+
+**3. fps.ms** 🥉
+- ✅ 24/7 Online always
+- ✅ Simple interface
+- ✅ Python + Node.js support
+- 👉 [fps.ms](https://fps.ms)
+
+### ❌ AVOID These (They Sleep!):
+- ❌ **Render** - sleeps after 15 min
+- ❌ **PythonAnywhere** - no always-on free tier
+- ❌ **Heroku** - no more free tier
+
+📖 Full comparison in [DEPLOYMENT_OPTIONS.md](DEPLOYMENT_OPTIONS.md)
 
 ## 🔧 Troubleshooting
 
 ### Bot not responding?
 - Check BOT_TOKEN is correct
-- Verify bot is running (check Render logs)
+- Verify bot is running (check platform logs)
 - Ensure webhook/polling is active
 
 ### Channel check failing?
