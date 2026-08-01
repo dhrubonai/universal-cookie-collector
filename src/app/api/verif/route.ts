@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // NEW APPROACH: Instead of consuming oobCode on server,
-    # construct the proper Alight Motion auth_action URL for browser completion
+    // construct the proper Alight Motion auth_action URL for browser completion
     const authActionUrl = `https://alightcreative.com/auth_action?apiKey=${apiKey}&mode=signIn&oobCode=${oobCode}`;
     
     // Log the activation attempt
