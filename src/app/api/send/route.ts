@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Original website API (already authorized with Firebase)
-const ORIGINAL_API = 'https://ap.rifan.dev/api/send';
+// Firebase configuration
+const FIREBASE_API_KEY = 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
+const AUTHORIZED_REFERER = 'https://alight-creative.firebaseapp.com/';
+const AUTHORIZED_ORIGIN = 'https://alight-creative.firebaseapp.com';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,21 +28,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Proxy request to original API (which has Firebase access)
-    const response = await fetch(ORIGINAL_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    });
+    // Call Firebase Auth API directly with authorized headers
+    // Using alight-creative.firebaseapp.com (the actual Firebase project domain)
+    const firebaseResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Referer': AUTHORIZED_REFERER,
+          'Origin': AUTHORIZED_ORIGIN,
+          'Sec-Fetch-Site': 'same-origin',
+          'Sec-Fetch-Mode': 'cors',
+        },
+        body: JSON.stringify({
+          requestType: 'EMAIL_SIGNIN',
+          email: email.trim(),
+          continueUrl: 'https://alightcreative.com/auth_action',
+        }),
+      }
+    );
 
-    const data = await response.json();
+    const firebaseData = await firebaseResponse.json();
 
-    // Log successful send
-    if (data.success) {
-      addHistoryItem(email, 'link_sent');
+    if (!firebaseResponse.ok) {
+      console.error('Firebase error:', firebaseData);
+      
+      // Handle rate limiting
+      if (firebaseData.error?.message?.includes('TOO_MANY_ATTEMPTS')) {
+        return NextResponse.json(
+          { success: false, message: 'Too many requests. Please wait a few minutes.' },
+          { status: 429 }
+        );
+      }
+
+      return NextResponse.json(
+        { success: false, message: firebaseData.error?.message || 'Failed to send verification link' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json(data, { status: response.status });
+    // Log successful send
+    addHistoryItem(email, 'link_sent');
+
+    return NextResponse.json({
+      success: true,
+      message: 'Verification link sent successfully'
+    });
 
   } catch (error: any) {
     console.error('Send API error:', error);
