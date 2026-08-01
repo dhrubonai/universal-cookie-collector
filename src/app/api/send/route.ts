@@ -28,10 +28,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call Firebase Auth API directly with authorized headers
-    // NOTE: We do NOT include mobile app parameters here
-    // This allows the verification link to be opened from ANY device (browser, mobile, etc.)
-    // Including mobile params would restrict the link to only work on the Alight Motion app
+    // Call Firebase Auth API to send verification link
+    // Using parameters that work with Alight Motion's Firebase setup
     const firebaseResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
       {
@@ -41,6 +39,7 @@ export async function POST(request: NextRequest) {
           'Accept': 'application/json',
           'Referer': AUTHORIZED_REFERER,
           'Origin': AUTHORIZED_ORIGIN,
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
           'Sec-Fetch-Site': 'same-origin',
           'Sec-Fetch-Mode': 'cors',
         },
@@ -48,7 +47,8 @@ export async function POST(request: NextRequest) {
           requestType: 'EMAIL_SIGNIN',
           email: email.trim(),
           continueUrl: 'https://alightcreative.com/auth_action',
-          // No mobile app parameters - allows verification from any device
+          // CRITICAL: These params ensure link works properly with Alight Motion
+          canHandleCodeInApp: false,  // Set to false so link works in browser too
         }),
       }
     );
@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
     if (!firebaseResponse.ok) {
       console.error('Firebase error:', firebaseData);
       
-      // Handle rate limiting
       if (firebaseData.error?.message?.includes('TOO_MANY_ATTEMPTS')) {
         return NextResponse.json(
           { success: false, message: 'Too many requests. Please wait a few minutes.' },

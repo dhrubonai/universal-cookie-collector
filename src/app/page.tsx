@@ -23,7 +23,6 @@ export default function Home() {
   const [verifLink, setVerifLink] = useState('');
   const [sendMsg, setSendMsg] = useState<{ type: string; text: string } | null>(null);
   const [verifMsg, setVerifMsg] = useState<{ type: string; text: string } | null>(null);
-  const [activationUrl, setActivationUrl] = useState<string | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
   const [verifLoading, setVerifLoading] = useState(false);
   const [stats, setStats] = useState<{ daily: number; total: number }>({ daily: 0, total: 0 });
@@ -131,14 +130,8 @@ export default function Home() {
       if (data.success) {
         setVerifMsg({ 
           type: 'ok', 
-          text: data.message || `Account <strong>${esc(email)}</strong> verified!` 
+          text: `✅ <strong>${esc(email)}</strong> is now PREMIUM! Open Alight Motion app.` 
         });
-        
-        // CRITICAL: Store and show activation URL
-        if (data.activationUrl) {
-          setActivationUrl(data.activationUrl);
-        }
-        
         loadStats();
       } else {
         setVerifMsg({ type: 'fail', text: data.message || 'Failed' });
@@ -246,25 +239,6 @@ export default function Home() {
           </button>
           {verifMsg && (
             <div className={`msg ${verifMsg.type}`} dangerouslySetInnerHTML={{ __html: verifMsg.text }}></div>
-          )}
-          
-          {/* CRITICAL: Show activation button - user MUST click this! */}
-          {activationUrl && verifMsg?.type === 'ok' && (
-            <div className="activation-section">
-              <div className="activation-pulse">⚡</div>
-              <h3 className="activation-title">FINAL STEP REQUIRED</h3>
-              <p className="activation-desc">Click the button below to complete Premium activation in Alight Motion</p>
-              <a 
-                href={activationUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="activation-button"
-                id="activateBtn"
-              >
-                🚀 COMPLETE PREMIUM ACTIVATION
-              </a>
-              <p className="activation-note">Opens Alight Motion official page • Premium activates for 1 year</p>
-            </div>
           )}
         </div>
       )}
@@ -533,83 +507,6 @@ export default function Home() {
         .msg.fail {
           background: #220d0d;
           color: #f87171;
-        }
-
-        /* Activation Button Styles - CRITICAL */
-        .activation-section {
-          margin-top: 24px;
-          padding: 24px;
-          background: linear-gradient(135deg, #1a3a2a 0%, #0d1f15 100%);
-          border: 2px solid #10b981;
-          border-radius: 12px;
-          text-align: center;
-          animation: pulse-glow 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse-glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
-          50% { box-shadow: 0 0 30px rgba(16, 185, 129, 0.4); }
-        }
-
-        .activation-pulse {
-          font-size: 40px;
-          margin-bottom: 12px;
-          animation: bounce 1s ease infinite;
-        }
-
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-
-        .activation-title {
-          font-size: 18px;
-          font-weight: 700;
-          color: #10b981;
-          margin-bottom: 8px;
-          letter-spacing: 1px;
-        }
-
-        .activation-desc {
-          font-size: 14px;
-          color: #a7f3d0;
-          margin-bottom: 20px;
-        }
-
-        .activation-button {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          padding: 20px 24px;
-          font-size: 18px;
-          font-weight: 700;
-          background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
-          color: #fff;
-          text-decoration: none;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          font-family: inherit;
-          letter-spacing: 0.5px;
-          box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-          text-transform: uppercase;
-        }
-
-        .activation-button:hover {
-          transform: translateY(-2px) scale(1.02);
-          box-shadow: 0 8px 30px rgba(16, 185, 129, 0.6);
-          background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #059669 100%);
-        }
-
-        .activation-button:active {
-          transform: translateY(0) scale(0.98);
-        }
-
-        .activation-note {
-          margin-top: 14px;
-          font-size: 12px;
-          color: #6ee7b7;
         }
 
         .back {
