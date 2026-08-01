@@ -23,7 +23,6 @@ export default function Home() {
   const [verifLink, setVerifLink] = useState('');
   const [sendMsg, setSendMsg] = useState<{ type: string; text: string } | null>(null);
   const [verifMsg, setVerifMsg] = useState<{ type: string; text: string } | null>(null);
-  const [activationUrl, setActivationUrl] = useState<string | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
   const [verifLoading, setVerifLoading] = useState(false);
   const [stats, setStats] = useState<{ daily: number; total: number }>({ daily: 0, total: 0 });
@@ -131,14 +130,8 @@ export default function Home() {
       if (data.success) {
         setVerifMsg({ 
           type: 'ok', 
-          text: data.message || `Account <strong>${esc(email)}</strong> verified! Complete activation below.` 
+          text: data.message || `Account <strong>${esc(email)}</strong> is now Premium! Open Alight Motion app.` 
         });
-        
-        // Store activation URL if provided
-        if (data.activationUrl) {
-          setActivationUrl(data.activationUrl);
-        }
-        
         loadStats();
       } else {
         setVerifMsg({ type: 'fail', text: data.message || 'Failed' });
@@ -246,21 +239,6 @@ export default function Home() {
           </button>
           {verifMsg && (
             <div className={`msg ${verifMsg.type}`} dangerouslySetInnerHTML={{ __html: verifMsg.text }}></div>
-          )}
-          
-          {/* Show activation button if URL is available */}
-          {activationUrl && verifMsg?.type === 'ok' && (
-            <div className="activation-complete">
-              <a 
-                href={activationUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="activate-btn"
-              >
-                🚀 Complete Activation (Open Link)
-              </a>
-              <p className="activate-hint">Click the button above to finish activating Premium in Alight Motion</p>
-            </div>
           )}
         </div>
       )}
@@ -529,41 +507,6 @@ export default function Home() {
         .msg.fail {
           background: #220d0d;
           color: #f87171;
-        }
-
-        .activation-complete {
-          margin-top: 16px;
-          text-align: center;
-        }
-
-        .activate-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          padding: 18px 16px;
-          font-size: 16px;
-          font-weight: 600;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: #fff;
-          text-decoration: none;
-          border-radius: 4px;
-          cursor: pointer;
-          transition: all 0.2s;
-          font-family: inherit;
-          gap: 8px;
-        }
-
-        .activate-btn:hover {
-          opacity: 0.9;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .activate-hint {
-          margin-top: 10px;
-          font-size: 13px;
-          color: #777;
         }
 
         .back {

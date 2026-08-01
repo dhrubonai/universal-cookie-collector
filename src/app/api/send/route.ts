@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Call Firebase Auth API directly with authorized headers
-    // CRITICAL: Include mobile app parameters for Alight Motion integration!
+    // NOTE: We do NOT include mobile app parameters here
+    // This allows the verification link to be opened from ANY device (browser, mobile, etc.)
+    // Including mobile params would restrict the link to only work on the Alight Motion app
     const firebaseResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
       {
@@ -46,12 +48,7 @@ export async function POST(request: NextRequest) {
           requestType: 'EMAIL_SIGNIN',
           email: email.trim(),
           continueUrl: 'https://alightcreative.com/auth_action',
-          // Mobile app parameters - CRITICAL for Alight Motion!
-          canHandleCodeInApp: true,
-          iOSBundleId: 'com.alightcreatives.alightmotion',
-          androidPackageName: 'com.alightcreatives.alightmotion',
-          androidInstallApp: true,
-          androidMinimumVersion: '1',
+          // No mobile app parameters - allows verification from any device
         }),
       }
     );
