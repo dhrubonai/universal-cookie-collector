@@ -1,44 +1,54 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-env/
-ENV/
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Node/Next.js (large files - don't track!)
-node_modules/
-.next/
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Sessions (contain auth data - don't share!)
-sessions/
-*.session
+# testing
+/coverage
 
-# Data files
-collected_data.json
-data/
-*.db
+# next.js
+/.next/
+/out/
 
-# Environment
-.env
-.env.local
-.venv/
+# production
+/build
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
+# misc
 .DS_Store
-Thumbs.db
+*.pem
 
-# Logs
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+local-*
+.claude
+.z-ai-config
 *.log
-logs/
+dev.log
+dev.out.log
+test
+prompt
 
-# Render/Railway specific
-.render/
+server.log
+# Skills directory
+/skills/
