@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// THE WORKING API KEY - From alight-creative-staging Firebase project
-const FIREBASE_API_KEY = 'AIzaSyDzNWMTFIiRRuu6ewOkcPQurqrK2fwXhHQ';
-const AUTHORIZED_REFERER = 'https://alight-creative-staging.web.app/';
-const AUTHORIZED_ORIGIN = 'https://alight-creative-staging.web.app';
+// ORIGINAL Firebase project - alight-creative.firebaseapp.com (same as ap.rifan.dev)
+const FIREBASE_API_KEY = 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
+const AUTHORIZED_REFERER = 'https://alight-creative.firebaseapp.com/';
+const AUTHORIZED_ORIGIN = 'https://alight-creative.firebaseapp.com';
 
 export async function POST(request: NextRequest) {
   try {
