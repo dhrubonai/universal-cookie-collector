@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Firebase configuration - NEW SETUP (matches current Alight Motion config)
-const FIREBASE_API_KEY = 'AIzaSyAAh--qI_hEEF3AN26HADZ-I5TKPOZrZqA';
-const AUTHORIZED_REFERER = 'https://alightcreative.com/';
-const AUTHORIZED_ORIGIN = 'https://alightcreative.com';
+// THE WORKING API KEY - From alight-creative-staging Firebase project
+const FIREBASE_API_KEY = 'AIzaSyDzNWMTFIiRRuu6ewOkcPQurqrK2fwXhHQ';
+const AUTHORIZED_REFERER = 'https://alight-creative-staging.web.app/';
+const AUTHORIZED_ORIGIN = 'https://alight-creative-staging.web.app';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, link } = body;
 
-    // Validate input
     if (!email || typeof email !== 'string') {
       return NextResponse.json(
         { success: false, message: 'Email is required' },
@@ -21,12 +20,12 @@ export async function POST(request: NextRequest) {
 
     if (!link || typeof link !== 'string') {
       return NextResponse.json(
-        { success: false, message: 'Verification link is required' },
+        { success: false, message: 'Verification link required' },
         { status: 400 }
       );
     }
 
-    // Extract oobCode from verification link
+    // Extract oobCode
     let oobCode = '';
     try {
       const url = new URL(link);
@@ -48,14 +47,14 @@ export async function POST(request: NextRequest) {
 
     if (!oobCode) {
       return NextResponse.json(
-        { success: false, message: 'Could not extract code' },
+        { success: false, message: 'Cannot extract code' },
         { status: 400 }
       );
     }
 
-    console.log(`[VERIFY] Authenticating ${email} with NEW Firebase setup...`);
+    console.log(`[VERIFY] Auth ${email} with WORKING key...`);
 
-    // Call signInWithEmailLink with NEW API key
+    // Call signInWithEmailLink with WORKING key
     const firebaseResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`,
       {
@@ -83,7 +82,7 @@ export async function POST(request: NextRequest) {
       
       if (msg.includes('EXPIRED_OOB_CODE')) {
         return NextResponse.json(
-          { success: false, message: 'Link expired. Request new.' },
+          { success: false, message: 'Link expired. Get new one.' },
           { status: 410 }
         );
       }
@@ -101,16 +100,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // SUCCESS! User authenticated in Firebase with NEW setup
-    console.log(`[VERIFY] ✅ Success! User: ${firebaseData.localId}`);
+    // ✅ SUCCESS! User authenticated
+    console.log(`[VERIFY] ✅ User: ${firebaseData.localId}`);
     
     addHistoryItem(email, 'activated');
 
     return NextResponse.json({
       success: true,
-      message: '✅ Premium activated! Open Alight Motion app.',
+      message: '✅ PREMIUM ACTIVATED! Open Alight Motion app now!',
       userId: firebaseData.localId,
-      emailVerified: true
+      isNewUser: firebaseData.isNewUser
     });
 
   } catch (error: any) {

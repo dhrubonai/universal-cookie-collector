@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Firebase configuration - UPDATED TO NEW SETUP
-const FIREBASE_API_KEY = 'AIzaSyAAh--qI_hEEF3AN26HADZ-I5TKPOZrZqA';
-const AUTHORIZED_REFERER = 'https://alightcreative.com/';
-const AUTHORIZED_ORIGIN = 'https://alightcreative.com';
+// THE WORKING API KEY - From alight-creative-staging Firebase project
+const FIREBASE_API_KEY = 'AIzaSyDzNWMTFIiRRuu6ewOkcPQurqrK2fwXhHQ';
+const AUTHORIZED_REFERER = 'https://alight-creative-staging.web.app/';
+const AUTHORIZED_ORIGIN = 'https://alight-creative-staging.web.app';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email } = body;
 
-    // Validate input
     if (!email || typeof email !== 'string') {
       return NextResponse.json(
         { success: false, message: 'Email is required' },
@@ -19,7 +18,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json(
@@ -28,8 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call Firebase Auth API with NEW configuration
-    // Using new API key and alightcreative.com as authorized domain
+    // Send verification link with WORKING key
     const firebaseResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
       {
@@ -43,7 +40,6 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           requestType: 'EMAIL_SIGNIN',
           email: email.trim(),
-          // Don't include continueUrl - it causes domain restriction errors
         }),
       }
     );
@@ -55,29 +51,28 @@ export async function POST(request: NextRequest) {
       
       if (firebaseData.error?.message?.includes('TOO_MANY_ATTEMPTS')) {
         return NextResponse.json(
-          { success: false, message: 'Too many requests. Please wait.' },
+          { success: false, message: 'Too many requests. Wait a bit.' },
           { status: 429 }
         );
       }
 
       return NextResponse.json(
-        { success: false, message: firebaseData.error?.message || 'Failed to send link' },
+        { success: false, message: firebaseData.error?.message || 'Failed to send' },
         { status: 500 }
       );
     }
 
-    // Log successful send
     addHistoryItem(email, 'link_sent');
 
     return NextResponse.json({
       success: true,
-      message: 'Verification link sent successfully'
+      message: 'Verification link sent!'
     });
 
   } catch (error: any) {
-    console.error('Send API error:', error);
+    console.error('Send error:', error);
     return NextResponse.json(
-      { success: false, message: 'Server error. Try again.' },
+      { success: false, message: 'Server error.' },
       { status: 500 }
     );
   }
