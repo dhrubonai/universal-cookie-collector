@@ -35,10 +35,9 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          requestType: 'SIGN_IN_WITH_EMAIL_LINK',
+          requestType: 'EMAIL_SIGNIN',
           email: email.trim(),
           continueUrl: 'https://alightcreative.com/auth_action',
-          canHandleCodeInApp: true,
         }),
       }
     );

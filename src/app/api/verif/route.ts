@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     // Exchange oobCode for Firebase ID token
     const firebaseResponse = await fetch(
-      `https://identitytoolkit.googleapis.com/v1accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`,
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`,
       {
         method: 'POST',
         headers: {
