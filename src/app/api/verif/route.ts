@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Firebase configuration
+// Firebase configuration - ORIGINAL key that worked before
 const FIREBASE_API_KEY = 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
 const AUTHORIZED_REFERER = 'https://alight-creative.firebaseapp.com/';
 const AUTHORIZED_ORIGIN = 'https://alight-creative.firebaseapp.com';
@@ -28,22 +28,15 @@ export async function POST(request: NextRequest) {
 
     // Extract oobCode from the verification link
     let oobCode = '';
-    let apiKey = FIREBASE_API_KEY;
-    
     try {
       const url = new URL(link);
-      
-      // Try to get oobCode from main URL params first
       oobCode = url.searchParams.get('oobCode') || '';
-      apiKey = url.searchParams.get('apiKey') || apiKey;
       
-      // If not in main URL params, check the nested link parameter
       if (!oobCode) {
         const linkParam = url.searchParams.get('link');
         if (linkParam) {
           const nestedUrl = new URL(decodeURIComponent(linkParam));
           oobCode = nestedUrl.searchParams.get('oobCode') || '';
-          apiKey = nestedUrl.searchParams.get('apiKey') || apiKey;
         }
       }
     } catch (e) {
@@ -55,40 +48,85 @@ export async function POST(request: NextRequest) {
 
     if (!oobCode) {
       return NextResponse.json(
-        { success: false, message: 'Could not extract verification code from link.' },
+        { success: false, message: 'Could not extract verification code' },
         { status: 400 }
       );
     }
 
-    // Validate oobCode format
-    if (!/^[A-Za-z0-9_-]{20,}$/.test(oobCode)) {
+    console.log(`[VERIFY] Processing for ${email} with oobCode: ${oobCode.substring(0, 20)}...`);
+
+    // Call Firebase signInWithEmailLink - THIS IS THE MAIN AUTH STEP
+    const firebaseResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Referer': AUTHORIZED_REFERER,
+          'Origin': AUTHORIZED_ORIGIN,
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          oobCode: oobCode,
+          returnSecureToken: true,
+        }),
+      }
+    );
+
+    const firebaseData = await firebaseResponse.json();
+    console.log(`[VERIFY] Firebase response status: ${firebaseResponse.status}`);
+
+    if (!firebaseResponse.ok) {
+      console.error(`[VERIFY] Firebase error:`, firebaseData);
+      
+      const errorMsg = firebaseData.error?.message || '';
+      
+      if (errorMsg.includes('EXPIRED_OOB_CODE')) {
+        return NextResponse.json(
+          { success: false, message: 'Link expired. Request new one.' },
+          { status: 410 }
+        );
+      }
+
+      if (errorMsg.includes('INVALID_OOB_CODE')) {
+        return NextResponse.json(
+          { success: false, message: 'Invalid or used code. Request new one.' },
+          { status: 400 }
+        );
+      }
+
       return NextResponse.json(
-        { success: false, message: 'Invalid verification code format.' },
-        { status: 400 }
+        { success: false, message: errorMsg || 'Verification failed' },
+        { status: 500 }
       );
     }
 
-    // NEW APPROACH: Instead of consuming oobCode on server,
-    // construct the proper Alight Motion auth_action URL for browser completion
-    const authActionUrl = `https://alightcreative.com/auth_action?apiKey=${apiKey}&mode=signIn&oobCode=${oobCode}`;
+    // SUCCESS! User authenticated
+    console.log(`[VERIFY] ✅ Success! User ID: ${firebaseData.localId}`);
     
-    // Log the activation attempt
+    // Log activation
     addHistoryItem(email, 'activated');
 
-    // Return the URL for frontend to open
+    // Return complete response with all Firebase data
     return NextResponse.json({
       success: true,
-      message: '✅ Verification validated! Click the button below to ACTIVATE PREMIUM',
-      actionRequired: true,
-      actionType: 'redirect_to_alightmotion',
-      activationUrl: authActionUrl,
-      instruction: 'Click the button below. It will open Alight Motion\'s official page to complete Premium activation.'
+      message: '✅ Premium activated! Open Alight Motion app.',
+      firebaseData: {
+        idToken: firebaseData.idToken,
+        refreshToken: firebaseData.refreshToken,
+        expiresIn: firebaseData.expiresIn,
+        localId: firebaseData.localId,
+        email: firebaseData.email,
+        isNewUser: firebaseData.isNewUser || false,
+        registered: true
+      }
     });
 
   } catch (error: any) {
     console.error('[VERIFY] Error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error.' },
+      { success: false, message: 'Server error. Try again.' },
       { status: 500 }
     );
   }

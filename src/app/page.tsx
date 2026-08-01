@@ -23,7 +23,6 @@ export default function Home() {
   const [verifLink, setVerifLink] = useState('');
   const [sendMsg, setSendMsg] = useState<{ type: string; text: string } | null>(null);
   const [verifMsg, setVerifMsg] = useState<{ type: string; text: string } | null>(null);
-  const [activationUrl, setActivationUrl] = useState<string | null>(null);
   const [sendLoading, setSendLoading] = useState(false);
   const [verifLoading, setVerifLoading] = useState(false);
   const [stats, setStats] = useState<{ daily: number; total: number }>({ daily: 0, total: 0 });
@@ -131,14 +130,8 @@ export default function Home() {
       if (data.success) {
         setVerifMsg({ 
           type: 'ok', 
-          text: data.message || `✅ <strong>${esc(email)}</strong> verified!` 
+          text: `✅ <strong>${esc(email)}</strong> PREMIUM ACTIVATED!<br/><br/>📱 Now open Alight Motion app<br/>⏱️ If not showing, wait 1-2 minutes<br/>🔄 Or force-close and reopen app` 
         });
-        
-        // Store activation URL for redirect
-        if (data.activationUrl) {
-          setActivationUrl(data.activationUrl);
-        }
-        
         loadStats();
       } else {
         setVerifMsg({ type: 'fail', text: data.message || 'Failed' });
@@ -246,24 +239,6 @@ export default function Home() {
           </button>
           {verifMsg && (
             <div className={`msg ${verifMsg.type}`} dangerouslySetInnerHTML={{ __html: verifMsg.text }}></div>
-          )}
-          
-          {/* CRITICAL: Show activation button to complete on alightcreative.com */}
-          {activationUrl && verifMsg?.type === 'ok' && (
-            <div className="activation-box">
-              <div className="activation-icon">🎬</div>
-              <h3 className="activation-heading">ACTIVATE PREMIUM NOW</h3>
-              <p className="activation-text">Click below to complete activation on Alight Motion's official site</p>
-              <a 
-                href={activationUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="activation-link"
-              >
-                ⚡ ACTIVATE PREMIUM (1 YEAR)
-              </a>
-              <p className="activation-small">Opens in new tab • Premium activates immediately</p>
-            </div>
           )}
         </div>
       )}
@@ -532,69 +507,6 @@ export default function Home() {
         .msg.fail {
           background: #220d0d;
           color: #f87171;
-        }
-
-        /* Activation Box Styles */
-        .activation-box {
-          margin-top: 20px;
-          padding: 24px 20px;
-          background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-          border: 2px solid #e94560;
-          border-radius: 12px;
-          text-align: center;
-        }
-
-        .activation-icon {
-          font-size: 48px;
-          margin-bottom: 8px;
-          animation: float 2s ease-in-out infinite;
-        }
-
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-
-        .activation-heading {
-          font-size: 20px;
-          font-weight: 800;
-          color: #fff;
-          margin-bottom: 8px;
-          letter-spacing: 1px;
-        }
-
-        .activation-text {
-          font-size: 14px;
-          color: #a0a0a0;
-          margin-bottom: 20px;
-        }
-
-        .activation-link {
-          display: block;
-          width: 100%;
-          padding: 18px 20px;
-          font-size: 16px;
-          font-weight: 700;
-          background: linear-gradient(135deg, #e94560 0%, #c23a51 100%);
-          color: #fff;
-          text-decoration: none;
-          border-radius: 8px;
-          transition: all 0.3s ease;
-          box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .activation-link:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 25px rgba(233, 69, 96, 0.6);
-          background: linear-gradient(135deg, #ff6b6b 0%, #e94560 100%);
-        }
-
-        .activation-small {
-          margin-top: 12px;
-          font-size: 12px;
-          color: #666;
         }
 
         .back {
