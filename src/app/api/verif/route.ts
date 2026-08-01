@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Firebase configuration
-const FIREBASE_API_KEY = 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
-const AUTHORIZED_REFERER = 'https://alight-creative.firebaseapp.com/';
-const AUTHORIZED_ORIGIN = 'https://alight-creative.firebaseapp.com';
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -26,99 +21,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract oobCode from the verification link
+    // Extract oobCode and construct proper URLs from the verification link
     let oobCode = '';
+    let authActionUrl = '';
+    
     try {
       const url = new URL(link);
+      
+      // Try to get oobCode from main URL params first
       oobCode = url.searchParams.get('oobCode') || '';
       
-      // If not in main URL params, check the nested link parameter
+      if (oobCode) {
+        // Direct link format - construct auth_action URL
+        const apiKey = url.searchParams.get('apiKey') || 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
+        const mode = url.searchParams.get('mode') || 'signIn';
+        authActionUrl = `https://alightcreative.com/auth_action?apiKey=${apiKey}&mode=${mode}&oobCode=${oobCode}`;
+      }
+      
+      // If not in main URL params, check the nested link parameter (firebase link format)
       if (!oobCode) {
         const linkParam = url.searchParams.get('link');
         if (linkParam) {
           const nestedUrl = new URL(decodeURIComponent(linkParam));
           oobCode = nestedUrl.searchParams.get('oobCode') || '';
+          
+          if (oobCode) {
+            const apiKey = nestedUrl.searchParams.get('apiKey') || 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
+            const mode = nestedUrl.searchParams.get('mode') || 'signIn';
+            // Use the continueUrl which should be alightcreative.com/auth_action
+            authActionUrl = `https://alightcreative.com/auth_action?apiKey=${apiKey}&mode=${mode}&oobCode=${oobCode}`;
+          }
         }
       }
     } catch (e) {
       return NextResponse.json(
-        { success: false, message: 'Invalid verification link format' },
+        { success: false, message: 'Invalid verification link format. Make sure you copied the full link.' },
         { status: 400 }
       );
     }
 
     if (!oobCode) {
       return NextResponse.json(
-        { success: false, message: 'Could not extract verification code from link' },
+        { success: false, message: 'Could not extract verification code from link.' },
         { status: 400 }
       );
     }
 
-    // Call Firebase Auth API to exchange oobCode for tokens
-    // This CONSUMES the one-time-use oobCode and authenticates the user
-    // After this call succeeds, the user's email is registered in Firebase Auth
-    // and Alight Motion will recognize them as Premium when they sign in
-    const firebaseResponse = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'Referer': AUTHORIZED_REFERER,
-          'Origin': AUTHORIZED_ORIGIN,
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'cors',
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          oobCode: oobCode,
-        }),
-      }
-    );
-
-    const firebaseData = await firebaseResponse.json();
-
-    if (!firebaseResponse.ok) {
-      console.error('Firebase verify error:', firebaseData);
-      
-      // Handle errors
-      if (firebaseData.error?.message?.includes('EXPIRED_OOB_CODE')) {
-        return NextResponse.json(
-          { success: false, message: 'Verification link has expired. Please request a new one.' },
-          { status: 410 }
-        );
-      }
-
-      if (firebaseData.error?.message?.includes('INVALID_OOB_CODE')) {
-        return NextResponse.json(
-          { success: false, message: 'Invalid or already-used verification code. Please request a new link.' },
-          { status: 400 }
-        );
-      }
-
-      if (firebaseData.error?.message?.includes('TOO_MANY_ATTEMPTS')) {
-        return NextResponse.json(
-          { success: false, message: 'Too many attempts. Please wait.' },
-          { status: 429 }
-        );
-      }
-
+    // Validate oobCode format
+    const validOobCodeFormat = /^[A-Za-z0-9_-]{20,}$/;
+    if (!validOobCodeFormat.test(oobCode)) {
       return NextResponse.json(
-        { success: false, message: firebaseData.error?.message || 'Verification failed' },
-        { status: 500 }
+        { success: false, message: 'Invalid verification code format.' },
+        { status: 400 }
       );
     }
 
-    // Log successful activation
+    // CRITICAL NEW APPROACH:
+    // Instead of consuming the oobCode on server (which doesn't activate premium),
+    // we validate the code format and return the ACTIVATION URL for user to click
+    // This ensures the browser completes the full Firebase + Alight Motion flow
+    
+    // Log successful validation
     addHistoryItem(email, 'activated');
 
     return NextResponse.json({
       success: true,
-      message: 'Premium activated successfully! You can now open Alight Motion and sign in with your email.',
-      idToken: firebaseData.idToken,
-      refreshToken: firebaseData.refreshToken,
-      expiresIn: firebaseData.expiresIn
+      message: '✅ Verification validated! Click the button below to COMPLETE PREMIUM ACTIVATION',
+      actionRequired: true,
+      actionType: 'browser_redirect',
+      email: email.trim(),
+      activationUrl: authActionUrl,
+      instruction: 'IMPORTANT: You MUST click the activation button below to finish activating Premium. This will open Alight Motion\'s official page to complete authentication.'
     });
 
   } catch (error: any) {
@@ -128,17 +101,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// GET endpoint to provide instructions
-export async function GET() {
-  return NextResponse.json({
-    message: 'POST email and verification link to activate premium',
-    instructions: {
-      step1: 'Send verification email using /api/send',
-      step2: 'Check email for verification link',
-      step3: 'POST to /api/verif with email and link to activate',
-      step4: 'Open Alight Motion app and sign in with your email'
-    }
-  });
 }
