@@ -1,157 +1,159 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react';
 
 interface HistoryItem {
-  email: string
-  action: string
-  time: string
+  email: string;
+  action: string;
+  time: string;
 }
 
 interface StatsData {
-  daily: number
-  total: number
-  history: HistoryItem[]
+  daily: number;
+  dailyMax: number;
+  total: number;
+  history: HistoryItem[];
 }
 
 export default function Home() {
-  const [loading, setLoading] = useState(true)
-  const [step, setStep] = useState(1)
-  const [email, setEmail] = useState('')
-  const [verifEmail, setVerifEmail] = useState('')
-  const [verifLink, setVerifLink] = useState('')
-  const [sendMsg, setSendMsg] = useState<{ type: string; text: string } | null>(null)
-  const [verifMsg, setVerifMsg] = useState<{ type: string; text: string } | null>(null)
-  const [sending, setSending] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-  const [stats, setStats] = useState<StatsData>({ daily: 0, total: 0, history: [] })
+  const [loading, setLoading] = useState(true);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [sendEmail, setSendEmail] = useState('');
+  const [verifEmail, setVerifEmail] = useState('');
+  const [verifLink, setVerifLink] = useState('');
+  const [sendMsg, setSendMsg] = useState<{ type: string; text: string } | null>(null);
+  const [verifMsg, setVerifMsg] = useState<{ type: string; text: string } | null>(null);
+  const [sendLoading, setSendLoading] = useState(false);
+  const [verifLoading, setVerifLoading] = useState(false);
+  const [stats, setStats] = useState<{ daily: number; total: number }>({ daily: 0, total: 0 });
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // API Base URL - using original backend (you can change this to your own)
-  const API_BASE = 'https://ap.rifan.dev'
+  const esc = useCallback((s: string) => {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }, []);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/stats');
+      const data: StatsData = await res.json();
+      
+      setStats({ daily: data.daily, total: data.total });
+      
+      if (data.history && data.history.length) {
+        setHistory(data.history.filter(h => h && h.email && h.time));
+      }
+    } catch (_) {
+      // Silent fail
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadStats()
-  }, [])
+    loadStats();
+  }, [loadStats]);
 
-  const loadStats = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/stats`)
-      const data = await res.json()
-      setStats(data)
-    } catch (err) {
-      console.error('Failed to load stats:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const esc = (s: string) => {
-    const div = document.createElement('div')
-    div.textContent = s
-    return div.innerHTML
-  }
-
-  const sendPremium = async () => {
-    if (!email.trim()) {
-      setSendMsg({ type: 'fail', text: 'Enter target email.' })
-      return
+  const handleSendPremium = async () => {
+    const email = sendEmail.trim();
+    if (!email) {
+      setSendMsg({ type: 'fail', text: 'Enter target email.' });
+      return;
     }
 
-    setSending(true)
-    setSendMsg(null)
+    setSendLoading(true);
+    setSendMsg(null);
 
     try {
-      const res = await fetch(`${API_BASE}/api/send`, {
+      const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() })
-      })
-      const data = await res.json()
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
 
       if (res.status === 429) {
-        setSendMsg({ type: 'fail', text: data.message || 'Too many requests. Please wait.' })
-        return
+        setSendMsg({ type: 'fail', text: data.message || 'Too many requests. Please wait.' });
+        return;
       }
 
-      setSendMsg({
-        type: data.success ? 'ok' : 'fail',
-        text: data.success
-          ? `Link sent to <strong>${esc(email)}</strong>. Check inbox & spam folder.`
-          : (data.message || 'Failed')
-      })
-
       if (data.success) {
-        loadStats()
+        setSendMsg({ 
+          type: 'ok', 
+          text: `Link sent to <strong>${esc(email)}</strong>. Check inbox & spam folder.` 
+        });
+        loadStats();
         setTimeout(() => {
-          setVerifEmail(email)
-          setStep(2)
-        }, 1200)
+          setVerifEmail(email);
+          setCurrentStep(2);
+        }, 1200);
+      } else {
+        setSendMsg({ type: 'fail', text: data.message || 'Failed' });
       }
     } catch (err: any) {
-      setSendMsg({ type: 'fail', text: `Error: ${err.message}` })
+      setSendMsg({ type: 'fail', text: `Error: ${err.message}` });
     } finally {
-      setSending(false)
+      setSendLoading(false);
     }
-  }
+  };
 
-  const verifyPremium = async () => {
-    if (!verifEmail.trim()) {
-      setVerifMsg({ type: 'fail', text: 'Enter target email.' })
-      return
+  const handleVerifyPremium = async () => {
+    const email = verifEmail.trim();
+    const link = verifLink.trim();
+
+    if (!email) {
+      setVerifMsg({ type: 'fail', text: 'Enter target email.' });
+      return;
     }
-    if (!verifLink.trim()) {
-      setVerifMsg({ type: 'fail', text: 'Paste the verification link from email.' })
-      return
+    if (!link) {
+      setVerifMsg({ type: 'fail', text: 'Paste the verification link from email.' });
+      return;
     }
 
-    setVerifying(true)
-    setVerifMsg(null)
+    setVerifLoading(true);
+    setVerifMsg(null);
 
     try {
-      const res = await fetch(`${API_BASE}/api/verif`, {
+      const res = await fetch('/api/verif', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: verifEmail.trim(), 
-          link: verifLink.trim() 
-        })
-      })
-      const data = await res.json()
+        body: JSON.stringify({ email, link })
+      });
+      const data = await res.json();
 
       if (res.status === 429) {
-        setVerifMsg({ type: 'fail', text: data.message || 'Too many requests. Please wait.' })
-        return
+        setVerifMsg({ type: 'fail', text: data.message || 'Too many requests. Please wait.' });
+        return;
       }
-
-      setVerifMsg({
-        type: data.success ? 'ok' : 'fail',
-        text: data.success
-          ? `Account <strong>${esc(verifEmail)}</strong> is now Premium!`
-          : (data.message || 'Failed')
-      })
 
       if (data.success) {
-        loadStats()
+        setVerifMsg({ 
+          type: 'ok', 
+          text: `Account <strong>${esc(email)}</strong> is now Premium!` 
+        });
+        loadStats();
+      } else {
+        setVerifMsg({ type: 'fail', text: data.message || 'Failed' });
       }
     } catch (err: any) {
-      setVerifMsg({ type: 'fail', text: `Error: ${err.message}` })
+      setVerifMsg({ type: 'fail', text: `Error: ${err.message}` });
     } finally {
-      setVerifying(false)
+      setVerifLoading(false);
     }
-  }
+  };
 
-  const goBack = () => {
-    setStep(1)
-    setSendMsg(null)
-    setVerifMsg(null)
-  }
+  const handleBack = () => {
+    setCurrentStep(1);
+    setVerifMsg(null);
+  };
 
   if (loading) {
     return (
       <div className="loading">
         <div className="loading-spin"></div>
       </div>
-    )
+    );
   }
 
   return (
@@ -159,100 +161,107 @@ export default function Home() {
       {/* Header */}
       <div className="head">
         <h1>Dhrubo&apos;s Alight Motion</h1>
-        <p>Premium Activator</p>
+        <p>Alight Motion Premium Activator</p>
       </div>
 
       {/* Stats */}
       <div className="stats">
         <div className="stat">
-          <span className="stat-val" id="statDaily">{stats.daily}</span>
+          <span className="stat-val">{stats.daily}</span>
           <span className="stat-lbl">Today</span>
         </div>
         <div className="stat">
-          <span className="stat-val" id="statTotal">{stats.total}</span>
+          <span className="stat-val">{stats.total}</span>
           <span className="stat-lbl">Total Generated</span>
         </div>
       </div>
 
       {/* Steps Indicator */}
       <div className="steps">
-        <span className={`dot ${step === 1 ? 'active' : step > 1 ? 'done' : ''}`}>1</span>
-        <span className={`line ${step > 1 ? 'done' : ''}`}></span>
-        <span className={`dot ${step === 2 ? 'active' : step > 2 ? 'done' : ''}`}>2</span>
+        <span className={`dot ${currentStep === 1 ? 'active' : currentStep > 1 ? 'done' : ''}`}>1</span>
+        <span className={`line ${currentStep > 1 ? 'done' : ''}`}></span>
+        <span className={`dot ${currentStep === 2 ? 'active' : currentStep > 2 ? 'done' : ''}`}>2</span>
       </div>
 
       {/* Step 1: Send Premium Link */}
-      <div className={`panel ${step !== 1 ? 'hide' : ''}`}>
-        <h2>Send Premium Link</h2>
-        <p className="info">A verification link will be sent to the target email. Check spam folder if missing.</p>
-        <input
-          type="email"
-          id="sendEmail"
-          placeholder="target email"
-          autoComplete="off"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && sendPremium()}
-        />
-        <button id="sendBtn" onClick={sendPremium} disabled={sending}>
-          <span>{sending ? 'Sending...' : 'Send Link'}</span>
-          <span className="spin" style={{ display: sending ? 'inline-block' : 'none' }}></span>
-        </button>
-        {sendMsg && (
-          <div className={`msg ${sendMsg.type}`} dangerouslySetInnerHTML={{ __html: sendMsg.text }}></div>
-        )}
-      </div>
-
-      {/* Step 2: Verify & Activate */}
-      <div className={`panel ${step !== 2 ? 'hide' : ''}`}>
-        <h2>Verify &amp; Activate</h2>
-        <p className="info">Check your email (inbox &amp; spam), copy the verification link, then paste it below to activate premium.</p>
-        <input
-          type="email"
-          id="verifEmail"
-          placeholder="target email"
-          autoComplete="off"
-          value={verifEmail}
-          onChange={(e) => setVerifEmail(e.target.value)}
-        />
-        <input
-          type="text"
-          id="verifLink"
-          placeholder="https://alight-creative.firebaseapp.com/__/auth/links?link=..."
-          value={verifLink}
-          onChange={(e) => setVerifLink(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && verifyPremium()}
-        />
-        <button id="verifBtn" onClick={verifyPremium} disabled={verifying}>
-          <span>{verifying ? 'Activating...' : 'Activate Premium'}</span>
-          <span className="spin" style={{ display: verifying ? 'inline-block' : 'none' }}></span>
-        </button>
-        {verifMsg && (
-          <div className={`msg ${verifMsg.type}`} dangerouslySetInnerHTML={{ __html: verifMsg.text }}></div>
-        )}
-      </div>
-
-      {/* Back Button */}
-      {step === 2 && (
-        <button className="back" onClick={goBack}>← Back</button>
+      {currentStep === 1 && (
+        <div className="panel">
+          <h2>Send Premium Link</h2>
+          <p className="info">A verification link will be sent to the target email. Check spam folder if missing.</p>
+          <input 
+            type="email" 
+            placeholder="target email" 
+            autoComplete="off"
+            value={sendEmail}
+            onChange={(e) => setSendEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSendPremium()}
+          />
+          <button 
+            onClick={handleSendPremium} 
+            disabled={sendLoading}
+            className="primary-btn"
+          >
+            <span>Send Link</span>
+            {sendLoading && <span className="spin"></span>}
+          </button>
+          {sendMsg && (
+            <div className={`msg ${sendMsg.type}`} dangerouslySetInnerHTML={{ __html: sendMsg.text }}></div>
+          )}
+        </div>
       )}
 
-      {/* History */}
+      {/* Step 2: Verify & Activate */}
+      {currentStep === 2 && (
+        <div className="panel">
+          <h2>Verify &amp; Activate</h2>
+          <p className="info">Check your email (inbox &amp; spam), copy the verification link, then paste it below to activate premium.</p>
+          <input 
+            type="email" 
+            placeholder="target email" 
+            autoComplete="off"
+            value={verifEmail}
+            onChange={(e) => setVerifEmail(e.target.value)}
+          />
+          <input 
+            type="text" 
+            placeholder="https://alight-creative.firebaseapp.com/__/auth/links?link=https://alightcreative.com/auth_action/?apiKey%3DAIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0%26mode%3DsignIn%26oobCode%3D..."
+            value={verifLink}
+            onChange={(e) => setVerifLink(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleVerifyPremium()}
+          />
+          <button 
+            onClick={handleVerifyPremium}
+            disabled={verifLoading}
+            className="primary-btn"
+          >
+            <span>Activate Premium</span>
+            {verifLoading && <span className="spin"></span>}
+          </button>
+          {verifMsg && (
+            <div className={`msg ${verifMsg.type}`} dangerouslySetInnerHTML={{ __html: verifMsg.text }}></div>
+          )}
+        </div>
+      )}
+
+      {/* Back Button */}
+      {currentStep > 1 && (
+        <button className="back" onClick={handleBack}>← Back</button>
+      )}
+
+      {/* History Section */}
       <div className="history-wrap">
         <h3>History</h3>
-        <div id="historyList">
-          {stats.history && stats.history.length > 0 ? (
-            stats.history.slice(0, 50).map((h, i) => (
-              h && h.email && h.time ? (
-                <div key={i} className="hist-item">
-                  <span>
-                    {esc(h.email)} <span className="hist-action">{esc(h.action || '')}</span>
-                  </span>
-                  <span className="hist-time">
-                    {h.time.slice(0, 10)} {h.time.slice(11, 16)}
-                  </span>
-                </div>
-              ) : null
+        <div className="history-list">
+          {history.length > 0 ? (
+            history.slice(0, 50).map((item, idx) => (
+              <div key={idx} className="hist-item">
+                <span>
+                  {esc(item.email)} <span className="hist-action">{esc(item.action || '')}</span>
+                </span>
+                <span className="hist-time">
+                  {item.time.slice(0, 10)} {item.time.slice(11, 16)}
+                </span>
+              </div>
             ))
           ) : (
             <div className="hist-item" style={{ color: '#555' }}>No history yet.</div>
@@ -263,11 +272,6 @@ export default function Home() {
       {/* Disclaimer */}
       <div className="disc">
         <strong>Disclaimer:</strong> This website is an interface/bridge to third-party services. We are not affiliated with Alight Motion. All trademarks belong to their respective owners.
-      </div>
-
-      {/* Footer - No ads! */}
-      <div className="footer">
-        <p>© 2024 Dhrubo&apos;s Alight Motion - Free Premium Activator</p>
       </div>
 
       <style jsx global>{`
@@ -450,8 +454,8 @@ export default function Home() {
           color: #555;
         }
 
-        button {
-          display: block;
+        .primary-btn {
+          display: flex;
           width: 100%;
           padding: 18px 16px;
           font-size: 16px;
@@ -463,23 +467,22 @@ export default function Home() {
           cursor: pointer;
           transition: opacity 0.2s;
           font-family: inherit;
-          display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
         }
 
-        button:hover {
+        .primary-btn:hover {
           opacity: 0.85;
         }
 
-        button:disabled {
+        .primary-btn:disabled {
           opacity: 0.3;
           cursor: default;
         }
 
         .spin {
-          display: none;
+          display: inline-block;
           width: 16px;
           height: 16px;
           border: 2px solid rgba(255,255,255,0.3);
@@ -513,15 +516,14 @@ export default function Home() {
           padding: 12px;
           margin-top: 8px;
           width: auto;
+          cursor: pointer;
+          font-family: inherit;
+          font-size: 16px;
         }
 
         .back:hover {
           color: #aaa;
           opacity: 1;
-        }
-
-        .hide {
-          display: none !important;
         }
 
         .history-wrap {
@@ -535,6 +537,11 @@ export default function Home() {
           text-transform: uppercase;
           letter-spacing: 0.5px;
           margin-bottom: 10px;
+        }
+
+        .history-list {
+          max-height: 300px;
+          overflow-y: auto;
         }
 
         .hist-item {
@@ -573,19 +580,11 @@ export default function Home() {
           line-height: 1.5;
         }
 
-        .footer {
-          text-align: center;
-          margin-top: 20px;
-          padding: 16px 0;
-          color: #444;
-          font-size: 12px;
-        }
-
         @media (max-width: 480px) {
           body { padding: 16px; }
           .head h1 { font-size: 24px; }
         }
       `}</style>
     </div>
-  )
+  );
 }
