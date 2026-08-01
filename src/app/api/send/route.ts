@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Firebase configuration from the original website
-const FIREBASE_API_KEY = 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
+// Original website API (already authorized with Firebase)
+const ORIGINAL_API = 'https://ap.rifan.dev/api/send';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,48 +26,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call Firebase Auth API to send sign-in email link
-    const firebaseResponse = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requestType: 'EMAIL_SIGNIN',
-          email: email.trim(),
-          continueUrl: 'https://alightcreative.com/auth_action',
-        }),
-      }
-    );
+    // Proxy request to original API (which has Firebase access)
+    const response = await fetch(ORIGINAL_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
 
-    const firebaseData = await firebaseResponse.json();
-
-    if (!firebaseResponse.ok) {
-      console.error('Firebase error:', firebaseData);
-      
-      // Handle rate limiting from Firebase
-      if (firebaseData.error?.message?.includes('TOO_MANY_ATTEMPTS')) {
-        return NextResponse.json(
-          { success: false, message: 'Too many requests. Please wait a few minutes.' },
-          { status: 429 }
-        );
-      }
-
-      return NextResponse.json(
-        { success: false, message: firebaseData.error?.message || 'Failed to send verification link' },
-        { status: 500 }
-      );
-    }
+    const data = await response.json();
 
     // Log successful send
-    addHistoryItem(email, 'link_sent');
+    if (data.success) {
+      addHistoryItem(email, 'link_sent');
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Verification link sent successfully'
-    });
+    return NextResponse.json(data, { status: response.status });
 
   } catch (error: any) {
     console.error('Send API error:', error);
