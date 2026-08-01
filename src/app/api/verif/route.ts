@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Firebase configuration - ORIGINAL key that worked before
-const FIREBASE_API_KEY = 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
-const AUTHORIZED_REFERER = 'https://alight-creative.firebaseapp.com/';
-const AUTHORIZED_ORIGIN = 'https://alight-creative.firebaseapp.com';
+// Firebase configuration - NEW SETUP (matches current Alight Motion config)
+const FIREBASE_API_KEY = 'AIzaSyAAh--qI_hEEF3AN26HADZ-I5TKPOZrZqA';
+const AUTHORIZED_REFERER = 'https://alightcreative.com/';
+const AUTHORIZED_ORIGIN = 'https://alightcreative.com';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract oobCode from the verification link
+    // Extract oobCode from verification link
     let oobCode = '';
     try {
       const url = new URL(link);
@@ -41,21 +41,21 @@ export async function POST(request: NextRequest) {
       }
     } catch (e) {
       return NextResponse.json(
-        { success: false, message: 'Invalid verification link format' },
+        { success: false, message: 'Invalid link format' },
         { status: 400 }
       );
     }
 
     if (!oobCode) {
       return NextResponse.json(
-        { success: false, message: 'Could not extract verification code' },
+        { success: false, message: 'Could not extract code' },
         { status: 400 }
       );
     }
 
-    console.log(`[VERIFY] Processing for ${email} with oobCode: ${oobCode.substring(0, 20)}...`);
+    console.log(`[VERIFY] Authenticating ${email} with NEW Firebase setup...`);
 
-    // Call Firebase signInWithEmailLink - THIS IS THE MAIN AUTH STEP
+    // Call signInWithEmailLink with NEW API key
     const firebaseResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithEmailLink?key=${FIREBASE_API_KEY}`,
       {
@@ -75,58 +75,48 @@ export async function POST(request: NextRequest) {
     );
 
     const firebaseData = await firebaseResponse.json();
-    console.log(`[VERIFY] Firebase response status: ${firebaseResponse.status}`);
 
     if (!firebaseResponse.ok) {
-      console.error(`[VERIFY] Firebase error:`, firebaseData);
+      console.error('[VERIFY] Error:', firebaseData);
       
-      const errorMsg = firebaseData.error?.message || '';
+      const msg = firebaseData.error?.message || '';
       
-      if (errorMsg.includes('EXPIRED_OOB_CODE')) {
+      if (msg.includes('EXPIRED_OOB_CODE')) {
         return NextResponse.json(
-          { success: false, message: 'Link expired. Request new one.' },
+          { success: false, message: 'Link expired. Request new.' },
           { status: 410 }
         );
       }
 
-      if (errorMsg.includes('INVALID_OOB_CODE')) {
+      if (msg.includes('INVALID_OOB_CODE')) {
         return NextResponse.json(
-          { success: false, message: 'Invalid or used code. Request new one.' },
+          { success: false, message: 'Invalid or used code.' },
           { status: 400 }
         );
       }
 
       return NextResponse.json(
-        { success: false, message: errorMsg || 'Verification failed' },
+        { success: false, message: msg || 'Failed' },
         { status: 500 }
       );
     }
 
-    // SUCCESS! User authenticated
-    console.log(`[VERIFY] ✅ Success! User ID: ${firebaseData.localId}`);
+    // SUCCESS! User authenticated in Firebase with NEW setup
+    console.log(`[VERIFY] ✅ Success! User: ${firebaseData.localId}`);
     
-    // Log activation
     addHistoryItem(email, 'activated');
 
-    // Return complete response with all Firebase data
     return NextResponse.json({
       success: true,
       message: '✅ Premium activated! Open Alight Motion app.',
-      firebaseData: {
-        idToken: firebaseData.idToken,
-        refreshToken: firebaseData.refreshToken,
-        expiresIn: firebaseData.expiresIn,
-        localId: firebaseData.localId,
-        email: firebaseData.email,
-        isNewUser: firebaseData.isNewUser || false,
-        registered: true
-      }
+      userId: firebaseData.localId,
+      emailVerified: true
     });
 
   } catch (error: any) {
     console.error('[VERIFY] Error:', error);
     return NextResponse.json(
-      { success: false, message: 'Server error. Try again.' },
+      { success: false, message: 'Server error.' },
       { status: 500 }
     );
   }

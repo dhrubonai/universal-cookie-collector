@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addHistoryItem } from '../stats/route';
 
-// Firebase configuration
-const FIREBASE_API_KEY = 'AIzaSyDrZ9jr_Y16ltSBqsQR5IH6I04FRga6Ki0';
-const AUTHORIZED_REFERER = 'https://alight-creative.firebaseapp.com/';
-const AUTHORIZED_ORIGIN = 'https://alight-creative.firebaseapp.com';
+// Firebase configuration - UPDATED TO NEW SETUP
+const FIREBASE_API_KEY = 'AIzaSyAAh--qI_hEEF3AN26HADZ-I5TKPOZrZqA';
+const AUTHORIZED_REFERER = 'https://alightcreative.com/';
+const AUTHORIZED_ORIGIN = 'https://alightcreative.com';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call Firebase Auth API to send verification link
-    // Using parameters that work with Alight Motion's Firebase setup
+    // Call Firebase Auth API with NEW configuration
+    // Using new API key and alightcreative.com as authorized domain
     const firebaseResponse = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`,
       {
@@ -39,16 +39,11 @@ export async function POST(request: NextRequest) {
           'Accept': 'application/json',
           'Referer': AUTHORIZED_REFERER,
           'Origin': AUTHORIZED_ORIGIN,
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
-          'Sec-Fetch-Site': 'same-origin',
-          'Sec-Fetch-Mode': 'cors',
         },
         body: JSON.stringify({
           requestType: 'EMAIL_SIGNIN',
           email: email.trim(),
-          continueUrl: 'https://alightcreative.com/auth_action',
-          // CRITICAL: These params ensure link works properly with Alight Motion
-          canHandleCodeInApp: false,  // Set to false so link works in browser too
+          // Don't include continueUrl - it causes domain restriction errors
         }),
       }
     );
@@ -60,13 +55,13 @@ export async function POST(request: NextRequest) {
       
       if (firebaseData.error?.message?.includes('TOO_MANY_ATTEMPTS')) {
         return NextResponse.json(
-          { success: false, message: 'Too many requests. Please wait a few minutes.' },
+          { success: false, message: 'Too many requests. Please wait.' },
           { status: 429 }
         );
       }
 
       return NextResponse.json(
-        { success: false, message: firebaseData.error?.message || 'Failed to send verification link' },
+        { success: false, message: firebaseData.error?.message || 'Failed to send link' },
         { status: 500 }
       );
     }
@@ -82,7 +77,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Send API error:', error);
     return NextResponse.json(
-      { success: false, message: 'Internal server error. Please try again.' },
+      { success: false, message: 'Server error. Try again.' },
       { status: 500 }
     );
   }
